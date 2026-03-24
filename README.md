@@ -74,24 +74,27 @@ X_BOOKMARKS_TARGET_DIR="$HOME/path/to/your/Obsidian/folder"
 
 ## Installation options
 
-You can use this project in four common ways.
+You can use this project in three common ways.
 
-### Option 1: Run it as a standalone shell workflow
+### Option 1: Ask an LLM agent to install it for you
 
-Clone the repository anywhere you like:
+If your assistant can access your filesystem and run shell commands, you can ask it to install this repo for you.
 
-```bash
-git clone https://github.com/noroot777/x-bookmarks-sync.git
-cd x-bookmarks-sync
-```
+Example prompts:
 
-Then run:
+- `Help me install x-bookmarks-sync from https://github.com/noroot777/x-bookmarks-sync`
+- `Clone this repo, copy x_bookmarks_sync.env.example to x_bookmarks_sync.env, and configure it for my Obsidian folder`
+- `Install this as a skill in my local agent setup and make it run scripts/sync_x_bookmarks.sh`
+- `Set up x-bookmarks-sync on this machine and tell me how to run it`
 
-```bash
-./scripts/sync_x_bookmarks.sh
-```
+What the agent should generally do:
 
-This is the most portable setup and works even if your agent tool has no skill system.
+- clone the repository
+- place it in the correct skills/tools directory if your host uses one
+- copy `x_bookmarks_sync.env.example` to `x_bookmarks_sync.env`
+- set `X_BOOKMARKS_TARGET_DIR` to your actual Obsidian path
+- verify Chrome remote debugging is enabled
+- run `./scripts/sync_x_bookmarks.sh`
 
 ### Option 2: Install it as a Codex skill
 
@@ -121,26 +124,6 @@ Typical patterns:
 - create a task or automation entry that launches the sync script in this repo
 
 For tools without a formal skill format, using the shell script directly is usually the simplest setup.
-
-### Option 4: Ask an LLM agent to install it for you
-
-If your assistant can access your filesystem and run shell commands, you can ask it to install this repo for you.
-
-Example prompts:
-
-- `Help me install x-bookmarks-sync from https://github.com/noroot777/x-bookmarks-sync`
-- `Clone this repo, copy x_bookmarks_sync.env.example to x_bookmarks_sync.env, and configure it for my Obsidian folder`
-- `Install this as a skill in my local agent setup and make it run scripts/sync_x_bookmarks.sh`
-- `Set up x-bookmarks-sync on this machine and tell me how to run it`
-
-What the agent should generally do:
-
-- clone the repository
-- place it in the correct skills/tools directory if your host uses one
-- copy `x_bookmarks_sync.env.example` to `x_bookmarks_sync.env`
-- set `X_BOOKMARKS_TARGET_DIR` to your actual Obsidian path
-- verify Chrome remote debugging is enabled
-- run `./scripts/sync_x_bookmarks.sh`
 
 ## Quick start
 

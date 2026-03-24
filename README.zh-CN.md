@@ -74,24 +74,27 @@ X_BOOKMARKS_TARGET_DIR="$HOME/你的/Obsidian/目录"
 
 ## 安装 / 集成方式
 
-你可以按 4 种方式使用这个项目。
+你可以按 3 种方式使用这个项目。
 
-### 方式 1：直接当独立脚本运行
+### 方式 1：直接让大模型帮你安装
 
-把仓库 clone 到任意目录：
+如果你的助手能访问本地文件系统并运行 shell 命令，也可以直接让它帮你装。
 
-```bash
-git clone https://github.com/noroot777/x-bookmarks-sync.git
-cd x-bookmarks-sync
-```
+可以直接复制这类提示词：
 
-然后直接运行：
+- `帮我安装 x-bookmarks-sync：https://github.com/noroot777/x-bookmarks-sync`
+- `把这个仓库 clone 下来，复制 x_bookmarks_sync.env.example 为 x_bookmarks_sync.env，并帮我改成我的 Obsidian 路径`
+- `把这个项目安装成我本地代理工具里的一个 skill，并让它运行 scripts/sync_x_bookmarks.sh`
+- `在这台机器上配置好 x-bookmarks-sync，然后告诉我怎么用`
 
-```bash
-./scripts/sync_x_bookmarks.sh
-```
+一个能执行命令的大模型，通常应该帮你做这些事：
 
-这是最通用的方式，不依赖任何 skill 系统。
+- clone 这个仓库
+- 如果你的宿主有 skills/tools 目录，就放到对应目录
+- 把 `x_bookmarks_sync.env.example` 复制成 `x_bookmarks_sync.env`
+- 把 `X_BOOKMARKS_TARGET_DIR` 改成你真实的 Obsidian 路径
+- 检查 Chrome remote debugging 是否已开启
+- 运行 `./scripts/sync_x_bookmarks.sh`
 
 ### 方式 2：作为 Codex skill 安装
 
@@ -121,26 +124,6 @@ scripts/sync_x_bookmarks.sh
 - 在任务系统或自动化系统里，把这个脚本作为一个固定任务入口
 
 如果工具本身没有正式的 skill 格式，通常直接调用脚本是最稳的。
-
-### 方式 4：直接让大模型帮你安装
-
-如果你的助手能访问本地文件系统并运行 shell 命令，也可以直接让它帮你装。
-
-可以直接复制这类提示词：
-
-- `帮我安装 x-bookmarks-sync：https://github.com/noroot777/x-bookmarks-sync`
-- `把这个仓库 clone 下来，复制 x_bookmarks_sync.env.example 为 x_bookmarks_sync.env，并帮我改成我的 Obsidian 路径`
-- `把这个项目安装成我本地代理工具里的一个 skill，并让它运行 scripts/sync_x_bookmarks.sh`
-- `在这台机器上配置好 x-bookmarks-sync，然后告诉我怎么用`
-
-一个能执行命令的大模型，通常应该帮你做这些事：
-
-- clone 这个仓库
-- 如果你的宿主有 skills/tools 目录，就放到对应目录
-- 把 `x_bookmarks_sync.env.example` 复制成 `x_bookmarks_sync.env`
-- 把 `X_BOOKMARKS_TARGET_DIR` 改成你真实的 Obsidian 路径
-- 检查 Chrome remote debugging 是否已开启
-- 运行 `./scripts/sync_x_bookmarks.sh`
 
 ## 快速开始
 
