@@ -1,0 +1,4 @@
+interface:
+  display_name: "X Bookmarks Sync"
+  short_description: "Sync X bookmarks into Obsidian notes."
+  default_prompt: "Sync my X bookmarks into Obsidian using my logged-in Chrome session."
