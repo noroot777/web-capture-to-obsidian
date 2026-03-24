@@ -10,7 +10,7 @@
 通过复用你已经登录的 Chrome 会话，把 `X.com` 书签同步成 Obsidian 笔记。
 它既可以当作独立脚本使用，也可以接到支持自定义技能/命令的代理工具里。
 
-推荐方式：让大模型先导出书签，再改进标题和摘要，最后生成最终笔记。
+推荐方式：默认让大模型参与整理；只有在你明确想要纯规则提取时，再关闭大模型。
 
 ## 一眼看懂
 
@@ -32,7 +32,7 @@
 - 通过 Chrome 远程调试连接你当前正在使用的浏览器会话
 - 读取 `https://x.com/i/bookmarks`
 - 为每条书签生成一篇 Markdown 笔记
-- 支持在代理执行时由大模型覆写标题和摘要
+- 支持在代理执行时由大模型覆写标题、摘要和标签
 - 使用稳定文件名，例如：
 
 ```text
@@ -72,6 +72,7 @@ X_BOOKMARKS_TARGET_DIR="$HOME/你的/Obsidian/目录"
 - Python 3
 - `npm`
 - 任意能运行 shell 命令的环境
+- 如果你想走默认的大模型增强模式，需要本机可用的 Codex CLI
 
 如果本机没有安装 `dev-browser`，脚本会自动执行安装。
 
@@ -97,9 +98,9 @@ X_BOOKMARKS_TARGET_DIR="$HOME/你的/Obsidian/目录"
 - 把 `x_bookmarks_sync.env.example` 复制成 `x_bookmarks_sync.env`
 - 把 `X_BOOKMARKS_TARGET_DIR` 改成你真实的 Obsidian 路径
 - 检查 Chrome remote debugging 是否已开启
-- 运行 `X_BOOKMARKS_SKIP_GENERATE=1 ./scripts/sync_x_bookmarks.sh`
-- 根据导出的书签写入 `x-bookmarks-llm-overrides.json`
-- 运行 `python3 scripts/generate_x_obsidian_notes.py`
+- 运行 `./scripts/sync_x_bookmarks.sh`
+- 默认开启大模型参与
+- 如果用户明确说不要模型参与，就改成 `X_BOOKMARKS_USE_LLM=0`
 
 ### 方式 2：作为 Codex skill 安装
 
@@ -138,6 +139,14 @@ scripts/sync_x_bookmarks.sh
 4. 确保你已经在 Chrome 中登录 X
 5. 运行 `./scripts/sync_x_bookmarks.sh`，或者让你的代理工具调用它
 
+现在默认会让模型参与优化每条笔记的标题、摘要和标签。
+
+如果你想关闭它：
+
+```bash
+X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
+```
+
 ## 代理工具里的示例提示词
 
 如果你的代理工具能运行 shell 命令，通常可以直接说：
@@ -146,11 +155,41 @@ scripts/sync_x_bookmarks.sh
 - `把我的 X 书签到 Obsidian`
 - `刷新我的 X 书签笔记`
 - `运行 x-bookmarks-sync 脚本`
-- `先导出我的 X 书签，用模型优化每条笔记的标题和摘要，再生成最终的 Obsidian 笔记`
+- `同步我的 X 书签，并让模型优化标题、摘要和标签`
+- `同步我的 X 书签，但不要让 LLM 参与`
 
-## 大模型增强提取
+## 大模型参与模式
 
-如果是代理在执行，这个项目可以通过下面这个文件让大模型覆写标题和摘要：
+现在的大模型参与是默认行为。
+
+也就是说，直接运行：
+
+```bash
+./scripts/sync_x_bookmarks.sh
+```
+
+就会自动：
+
+1. 导出书签
+2. 分批调用 `codex exec`
+3. 写入 `title`、`summary`、`tags` 覆写
+4. 生成最终笔记
+
+如果你想改成纯规则提取：
+
+```bash
+X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
+```
+
+如果你想指定模型：
+
+```bash
+X_BOOKMARKS_LLM_MODEL=gpt-5.4 ./scripts/sync_x_bookmarks.sh
+```
+
+## 大模型覆写文件
+
+如果是代理在执行，这个项目可以通过下面这个文件让大模型覆写标题、摘要和标签：
 
 ```text
 ~/.dev-browser/tmp/x-bookmarks-llm-overrides.json
@@ -161,11 +200,11 @@ scripts/sync_x_bookmarks.sh
 - `x_bookmarks_llm_overrides.example.json`
 - `SKILL.md`
 
-推荐的代理执行流程：
+进阶代理执行流程：
 
 1. 运行 `X_BOOKMARKS_SKIP_GENERATE=1 ./scripts/sync_x_bookmarks.sh`
 2. 读取 `~/.dev-browser/tmp/x-bookmarks-export.json`
-3. 把更好的 `title` 和 `summary` 写进 `~/.dev-browser/tmp/x-bookmarks-llm-overrides.json`
+3. 把更好的 `title`、`summary` 和 `tags` 写进 `~/.dev-browser/tmp/x-bookmarks-llm-overrides.json`
 4. 运行 `python3 scripts/generate_x_obsidian_notes.py`
 
 ## 工作流程
@@ -175,7 +214,8 @@ scripts/sync_x_bookmarks.sh
 3. 从本机 Chrome 配置里读取 `DevToolsActivePort`
 4. 连接到你当前已经打开的 Chrome 会话
 5. 导出 X 书签
-6. 重新生成 Obsidian 笔记与索引页
+6. 按需执行大模型覆写步骤
+7. 重新生成 Obsidian 笔记与索引页
 
 ## Chrome 一次性准备
 
@@ -229,6 +269,12 @@ Chrome 在建立新的远程调试连接时，可能会弹出权限确认框。
 ./scripts/sync_x_bookmarks.sh
 ```
 
+如果你想强制改成纯规则提取：
+
+```bash
+X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
+```
+
 可选本地配置文件：
 
 ```text
@@ -246,9 +292,11 @@ bash /path/to/x-bookmarks-sync/scripts/sync_x_bookmarks.sh
 - `SKILL.md`
   - 供支持 skill 元数据的工具使用的示例定义
 - `x_bookmarks_llm_overrides.example.json`
-  - 大模型生成标题和摘要覆盖结果时的示例格式
+  - 大模型生成标题、摘要和标签覆盖结果时的示例格式
+- `scripts/generate_x_llm_overrides.py`
+  - 通过 `codex exec` 批量生成大模型覆写
 - `scripts/sync_x_bookmarks.sh`
-  - 环境检查、Chrome 连接、同步入口
+  - 环境检查、Chrome 连接、默认同步入口
 - `scripts/export_x_bookmarks.devbrowser.js`
   - 书签抓取与“遇到旧书签批次提前停止”的逻辑
 - `scripts/generate_x_obsidian_notes.py`

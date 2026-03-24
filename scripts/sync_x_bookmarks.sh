@@ -14,6 +14,7 @@ fi
 DEVTOOLS_FILE="${X_BOOKMARKS_DEVTOOLS_FILE:-$HOME/Library/Application Support/Google/Chrome/DevToolsActivePort}"
 EXPORT_SCRIPT="$SKILL_DIR/scripts/export_x_bookmarks.devbrowser.js"
 GENERATE_SCRIPT="$SKILL_DIR/scripts/generate_x_obsidian_notes.py"
+LLM_SCRIPT="$SKILL_DIR/scripts/generate_x_llm_overrides.py"
 TARGET_DIR="${X_BOOKMARKS_TARGET_DIR:-$HOME/Obsidian/X Bookmarks}"
 STATE_FILE="${X_BOOKMARKS_STATE_FILE:-$TARGET_DIR/.x_bookmarks_state.json}"
 DEV_BROWSER_TMP="${X_BOOKMARKS_DEV_BROWSER_TMP:-$HOME/.dev-browser/tmp}"
@@ -22,6 +23,7 @@ CHROME_BIN="${X_BOOKMARKS_CHROME_BIN:-/Applications/Google Chrome.app/Contents/M
 MIN_SUPPORTED_CHROME_MAJOR="${X_BOOKMARKS_MIN_CHROME_MAJOR:-144}"
 SOURCE_JSON="${X_BOOKMARKS_SOURCE_JSON:-$DEV_BROWSER_TMP/x-bookmarks-export.json}"
 LLM_OVERRIDES_FILE="${X_BOOKMARKS_LLM_OVERRIDES_FILE:-$DEV_BROWSER_TMP/x-bookmarks-llm-overrides.json}"
+USE_LLM="${X_BOOKMARKS_USE_LLM:-1}"
 SKIP_EXPORT="${X_BOOKMARKS_SKIP_EXPORT:-0}"
 SKIP_GENERATE="${X_BOOKMARKS_SKIP_GENERATE:-0}"
 
@@ -42,6 +44,16 @@ ensure_dev_browser() {
 
   echo "dev-browser not found. Installing it automatically with npm..."
   npm install -g dev-browser
+}
+
+ensure_codex() {
+  if command -v codex >/dev/null 2>&1; then
+    return
+  fi
+
+  echo "LLM participation is enabled, but the codex CLI is not available." >&2
+  echo "Install Codex first, or run with X_BOOKMARKS_USE_LLM=0 to skip LLM-generated titles, summaries, and tags." >&2
+  exit 1
 }
 
 check_chrome_version() {
@@ -109,12 +121,19 @@ if [[ "$SKIP_EXPORT" != "1" ]]; then
   dev-browser --connect "$ENDPOINT" --timeout 900 run "$EXPORT_SCRIPT"
 fi
 
+if [[ "$SKIP_GENERATE" != "1" && "$USE_LLM" == "1" ]]; then
+  ensure_codex
+  python3 "$LLM_SCRIPT"
+fi
+
 if [[ "$SKIP_GENERATE" != "1" ]]; then
   python3 "$GENERATE_SCRIPT"
 fi
 
 if [[ "$SKIP_GENERATE" == "1" ]]; then
   echo "Exported X bookmarks to $SOURCE_JSON"
+elif [[ "$USE_LLM" == "1" ]]; then
+  echo "Synced X bookmarks into $TARGET_DIR with LLM-generated titles, summaries, and tags"
 else
-  echo "Synced X bookmarks into $TARGET_DIR"
+  echo "Synced X bookmarks into $TARGET_DIR without LLM participation"
 fi

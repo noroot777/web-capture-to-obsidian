@@ -10,7 +10,7 @@
 Sync your X.com bookmarks into Obsidian notes by reusing your real, logged-in Chrome session.
 Use it either as a standalone shell workflow or as a skill/integration inside an agent tool.
 
-Recommended mode: let an LLM agent export the bookmarks, improve titles and summaries, then generate the final notes.
+Recommended mode: use LLM participation by default, and only disable it when you explicitly want pure rule-based extraction.
 
 ## At a glance
 
@@ -32,7 +32,7 @@ This project is useful for local desktop workflows where:
 - Connects to your current Chrome session through remote debugging
 - Reads your X bookmarks from `https://x.com/i/bookmarks`
 - Writes one Markdown note per bookmark into your Obsidian vault
-- Supports LLM-written title and summary overrides during agent execution
+- Supports LLM-written title, summary, and tag overrides during agent execution
 - Preserves numbering with filenames like:
 
 ```text
@@ -72,6 +72,7 @@ X_BOOKMARKS_TARGET_DIR="$HOME/path/to/your/Obsidian/folder"
 - Python 3
 - `npm`
 - Any environment that can run shell commands
+- Codex CLI if you want the default LLM-assisted mode
 
 `dev-browser` will be installed automatically if it is missing.
 
@@ -97,9 +98,9 @@ What the agent should generally do:
 - copy `x_bookmarks_sync.env.example` to `x_bookmarks_sync.env`
 - set `X_BOOKMARKS_TARGET_DIR` to your actual Obsidian path
 - verify Chrome remote debugging is enabled
-- run `X_BOOKMARKS_SKIP_GENERATE=1 ./scripts/sync_x_bookmarks.sh`
-- write `x-bookmarks-llm-overrides.json` based on the exported bookmarks
-- run `python3 scripts/generate_x_obsidian_notes.py`
+- run `./scripts/sync_x_bookmarks.sh`
+- keep LLM participation enabled by default
+- allow `X_BOOKMARKS_USE_LLM=0` when the user explicitly asks for no model involvement
 
 ### Option 2: Install it as a Codex skill
 
@@ -138,6 +139,14 @@ For tools without a formal skill format, using the shell script directly is usua
 4. Make sure you are already signed in to X in Chrome
 5. Run `./scripts/sync_x_bookmarks.sh` or call it from your agent tool
 
+By default, the sync uses the model to improve each note's title, summary, and tags.
+
+If you want to turn that off:
+
+```bash
+X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
+```
+
 ## Example prompts for agent tools
 
 If your agent can run shell commands, prompts such as these usually work:
@@ -146,11 +155,35 @@ If your agent can run shell commands, prompts such as these usually work:
 - `Sync my X bookmarks into Obsidian`
 - `Refresh my X bookmarks notes`
 - `Run the x-bookmarks-sync script`
-- `Export my X bookmarks, improve each note title and summary with the model, then generate the final Obsidian notes`
+- `Sync my X bookmarks and let the model improve titles, summaries, and tags`
+- `Sync my X bookmarks, but do not use the model`
 
-## LLM-assisted extraction
+## LLM Participation
 
-If an agent is running this project, it can improve title and summary quality by writing:
+LLM participation is now the default behavior.
+
+That means `./scripts/sync_x_bookmarks.sh` will:
+
+1. export bookmarks from your real Chrome session
+2. call `codex exec` in batches
+3. write `title`, `summary`, and `tags` overrides
+4. generate the final notes
+
+If you want pure rule-based extraction instead:
+
+```bash
+X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
+```
+
+If you want to choose a different model:
+
+```bash
+X_BOOKMARKS_LLM_MODEL=gpt-5.4 ./scripts/sync_x_bookmarks.sh
+```
+
+## LLM Override File
+
+If an agent is running this project, it can improve title, summary, and tag quality by writing:
 
 ```text
 ~/.dev-browser/tmp/x-bookmarks-llm-overrides.json
@@ -161,11 +194,11 @@ The generator automatically reads that file when present. See:
 - `x_bookmarks_llm_overrides.example.json`
 - `SKILL.md`
 
-Recommended agent flow:
+Advanced agent flow:
 
 1. Run `X_BOOKMARKS_SKIP_GENERATE=1 ./scripts/sync_x_bookmarks.sh`
 2. Read `~/.dev-browser/tmp/x-bookmarks-export.json`
-3. Write better `title` and `summary` values into `~/.dev-browser/tmp/x-bookmarks-llm-overrides.json`
+3. Write better `title`, `summary`, and `tags` values into `~/.dev-browser/tmp/x-bookmarks-llm-overrides.json`
 4. Run `python3 scripts/generate_x_obsidian_notes.py`
 
 ## How it works
@@ -175,7 +208,8 @@ Recommended agent flow:
 3. It reads Chrome's `DevToolsActivePort` from the local profile.
 4. It connects to your already-running Chrome session.
 5. It exports bookmarks from X.
-6. It regenerates the Obsidian notes and index.
+6. It optionally runs the LLM override step.
+7. It regenerates the Obsidian notes and index.
 
 ## One-time Chrome setup
 
@@ -229,6 +263,12 @@ You can run the sync directly without any skill system:
 ./scripts/sync_x_bookmarks.sh
 ```
 
+To force pure rule-based extraction instead:
+
+```bash
+X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
+```
+
 Optional local config file:
 
 ```text
@@ -246,9 +286,11 @@ bash /path/to/x-bookmarks-sync/scripts/sync_x_bookmarks.sh
 - `SKILL.md`
   - an example skill definition for tools that support skill-style metadata
 - `x_bookmarks_llm_overrides.example.json`
-  - example format for LLM-generated title and summary overrides
+  - example format for LLM-generated title, summary, and tag overrides
+- `scripts/generate_x_llm_overrides.py`
+  - batch LLM override generation through `codex exec`
 - `scripts/sync_x_bookmarks.sh`
-  - environment checks, Chrome endpoint discovery, sync entrypoint
+  - environment checks, Chrome endpoint discovery, default sync entrypoint
 - `scripts/export_x_bookmarks.devbrowser.js`
   - bookmark export and early-stop scrolling logic
 - `scripts/generate_x_obsidian_notes.py`

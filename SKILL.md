@@ -9,16 +9,25 @@ Syncs X bookmarks from the user's real Chrome session into a configurable Obsidi
 
 ## Workflow
 
-1. Export bookmarks without generating final notes yet:
-   - `X_BOOKMARKS_SKIP_GENERATE=1 ./scripts/sync_x_bookmarks.sh`
-2. Read the exported bookmarks JSON from `X_BOOKMARKS_SOURCE_JSON`.
-   - default: `~/.dev-browser/tmp/x-bookmarks-export.json`
-3. Use the model to improve each bookmark's `title` and `summary`.
-4. Write those improvements to `X_BOOKMARKS_LLM_OVERRIDES_FILE`.
+1. By default, run:
+   - `./scripts/sync_x_bookmarks.sh`
+2. That script now:
+   - exports bookmarks
+   - uses the model to generate `title`, `summary`, and `tags`
+   - writes overrides to `X_BOOKMARKS_LLM_OVERRIDES_FILE`
    - default: `~/.dev-browser/tmp/x-bookmarks-llm-overrides.json`
-5. Run:
-   - `python3 scripts/generate_x_obsidian_notes.py`
-6. Report how many bookmarks were synced and where the notes were written.
+   - generates the final Obsidian notes
+3. If the user explicitly says not to use the model, run:
+   - `X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh`
+4. Report how many bookmarks were synced and where the notes were written.
+
+## User Choice
+
+Treat LLM participation as the default.
+
+- If the user says `同步 X 书签`, `抓取我的 X 书签`, or similar, let the model participate.
+- If the user says `不要让 LLM 参与`, `不用模型`, `without llm`, or similar, set `X_BOOKMARKS_USE_LLM=0`.
+- If the user wants a custom model, set `X_BOOKMARKS_LLM_MODEL`.
 
 ## LLM Override Format
 
@@ -33,6 +42,11 @@ Write JSON in either of these shapes:
         "First key point",
         "Second key point",
         "Third key point"
+      ],
+      "tags": [
+        "automation",
+        "agents",
+        "workflow"
       ]
     }
   }
@@ -45,7 +59,11 @@ Or:
 {
   "https://x.com/.../status/123": {
     "title": "Better title here",
-    "summary": "- First key point\n- Second key point"
+    "summary": "- First key point\n- Second key point",
+    "tags": [
+      "automation",
+      "agents"
+    ]
   }
 }
 ```
@@ -62,7 +80,8 @@ When generating `title` and `summary`:
 - Remove handles, metrics, and low-signal UI boilerplate.
 - For link-heavy posts, summarize what the linked resource is about.
 - Keep `title` concise and filename-friendly.
-- Keep `summary` to 1-3 concrete bullets.
+- Keep `summary` to 2-4 concrete bullets.
+- Return tags that are specific enough to be useful in Obsidian.
 
 ## Shell Entry Point
 
@@ -72,6 +91,8 @@ When generating `title` and `summary`:
 - auto-install `dev-browser` if it is missing
 - reuse the user's logged-in Chrome session via `chrome://inspect#remote-debugging`
 - export bookmarks
+- generate LLM overrides by default
+- optionally skip LLM participation when `X_BOOKMARKS_USE_LLM=0`
 - optionally skip final generation when `X_BOOKMARKS_SKIP_GENERATE=1`
 
 If Chrome shows a remote-debugging permission prompt, wait for the user to click `Allow`, then rerun the sync script.
