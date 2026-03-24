@@ -1,4 +1,4 @@
 interface:
-  display_name: "X Bookmarks Sync"
-  short_description: "Sync X bookmarks into Obsidian notes."
-  default_prompt: "Sync my X bookmarks into Obsidian using my logged-in Chrome session."
+  display_name: "Web Capture to Obsidian"
+  short_description: "Capture web links and X bookmarks into Obsidian."
+  default_prompt: "Use $web-capture-to-obsidian to capture this link or sync my X bookmarks into Obsidian."

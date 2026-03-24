@@ -51,7 +51,7 @@ ensure_codex() {
     return
   fi
 
-  echo "LLM participation is enabled, but the codex CLI is not available." >&2
+  echo "Standalone shell automation with LLM participation is enabled, but the codex CLI is not available." >&2
   echo "Install Codex first, or run with X_BOOKMARKS_USE_LLM=0 to skip LLM-generated titles, summaries, and tags." >&2
   exit 1
 }

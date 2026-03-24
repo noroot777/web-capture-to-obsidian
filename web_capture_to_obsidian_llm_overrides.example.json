@@ -1,0 +1,17 @@
+{
+  "entries": {
+    "https://example.com/article": {
+      "title": "更清晰的网页标题",
+      "summary": [
+        "第一条关键信息",
+        "第二条关键信息",
+        "第三条补充信息"
+      ],
+      "tags": [
+        "web-capture-to-obsidian",
+        "wechat",
+        "automation"
+      ]
+    }
+  }
+}

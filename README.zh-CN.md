@@ -1,4 +1,4 @@
-# X 书签同步
+# Web Capture to Obsidian
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-black)
@@ -7,310 +7,351 @@
 
 [English README](./README.md)
 
-通过复用你已经登录的 Chrome 会话，把 `X.com` 书签同步成 Obsidian 笔记。
-它既可以当作独立脚本使用，也可以接到支持自定义技能/命令的代理工具里。
+`web-capture-to-obsidian` 是一个跨 client 的 Agent Skill 包，目标是把网页内容抓取并整理进 Obsidian。
 
-推荐方式：默认让大模型参与整理；只有在你明确想要纯规则提取时，再关闭大模型。
+它支持：
+
+- 单个链接
+- 从一段文本里提取一个或多个 URL
+- 微信公众号、GitHub、X 和普通网页
+- 原来的完整 X 书签同步流程
+
+这个项目最早来自 `x-bookmarks-sync`，但现在范围已经更大了：重点是网页采集进 Obsidian，X 书签同步只是同一个包里的一个工作流。
 
 ## 一眼看懂
 
-- 借用你当前已经登录的 Chrome 会话，而不是单独处理登录
-- 从 `https://x.com/i/bookmarks` 导出书签
-- 为每条书签生成一篇 Obsidian Markdown 笔记
-- 多次同步时保持稳定递增编号
-- 编号按收藏列表顺序分配，从列表底部最老的书签开始
+- 复用你当前真实登录着的 Chrome 会话
+- 用 `dev-browser` 做稳定、可重复的浏览器自动化
+- 同一份 `SKILL.md` 可被 Codex、Claude Code、OpenCode、OpenClaw 使用
+- 默认由当前 agent 会话负责生成标题、摘要、标签
+- 仍然保留基于 Codex CLI 的独立 shell 自动化模式
+- 输出成适合 Obsidian 的精简笔记，正文只保留 `摘要` 和 `页面摘录`
 
-这个项目适合下面这种场景：
+## 推荐工作流
 
-- 你已经在 Chrome 里登录了 X
-- 你想把每条书签落成一篇 Obsidian 笔记
-- 你希望编号稳定，不要每次同步都重排旧文件
-- 你希望后续同步只给新书签继续追加编号
+推荐的跨 client 流程是：
 
-## 功能
+1. 先用 shell 脚本做浏览器导出
+2. 让当前 agent 会话读取导出的 JSON
+3. 让 agent 写 overrides JSON
+4. 再调用生成脚本落盘到 Obsidian
 
-- 通过 Chrome 远程调试连接你当前正在使用的浏览器会话
-- 读取 `https://x.com/i/bookmarks`
-- 为每条书签生成一篇 Markdown 笔记
-- 支持在代理执行时由大模型覆写标题、摘要和标签
-- 使用稳定文件名，例如：
+通用网页抓取：
 
-```text
-001 - 标题 - YYYY-MM-DD HHMMSS - 作者.md
-002 - 标题 - YYYY-MM-DD HHMMSS - 作者.md
+```bash
+WEB_CAPTURE_TO_OBSIDIAN_SKIP_GENERATE=1 ./scripts/organize_knowledge.sh "https://github.com/openai/openai-python"
+python3 scripts/generate_knowledge_obsidian_notes.py
 ```
 
-- 编号按收藏列表顺序倒序分配：
-  - 收藏列表最下面、最老的那条是 `001`
-  - 越靠上、越新的收藏编号越大
+X 书签同步：
 
-- 同时维护：
-  - `000 - X 书签索引.md`
-  - `.x_bookmarks_state.json`
-
-## 当前默认输出路径
-
-默认写入：
-
-```text
-~/Obsidian/X Bookmarks
+```bash
+X_BOOKMARKS_SKIP_GENERATE=1 ./scripts/sync_x_bookmarks.sh
+python3 scripts/generate_x_obsidian_notes.py
 ```
 
-不需要直接改脚本。
+在正常的 skill 使用方式里，`title / summary / tags` 这一步应该由当前 agent 会话自己生成。
 
-复制 `x_bookmarks_sync.env.example` 为 `x_bookmarks_sync.env`，然后设置：
+通用网页 overrides 格式：
+
+- [`web_capture_to_obsidian_llm_overrides.example.json`](./web_capture_to_obsidian_llm_overrides.example.json)
+
+X 书签 overrides 格式：
+
+- [`x_bookmarks_llm_overrides.example.json`](./x_bookmarks_llm_overrides.example.json)
+
+## 独立 shell 自动化
+
+也保留独立 shell 自动化模式：
+
+```bash
+./scripts/organize_knowledge.sh "https://github.com/openai/openai-python"
+./scripts/sync_x_bookmarks.sh
+```
+
+在这种模式下，脚本自己的 LLM 增强步骤会调用本机 `codex` CLI。如果你不想依赖它，可以关闭 LLM，或者改用上面的 agent 驱动流程。
+
+## 安装到 AI 客户端
+
+当前公开可用的 Git 地址：
+
+```text
+https://github.com/noroot777/web-capture-to-obsidian.git
+```
+
+安装目录和 skill 名称统一使用 `web-capture-to-obsidian`；如果你本地已经有一份仓库，也可以直接用软链接方式安装。
+
+### Codex
+
+安装路径：
+
+```text
+~/.codex/skills/web-capture-to-obsidian
+```
+
+clone 示例：
+
+```bash
+git clone https://github.com/noroot777/web-capture-to-obsidian.git ~/.codex/skills/web-capture-to-obsidian
+```
+
+软链接示例：
+
+```bash
+ln -s /path/to/web-capture-to-obsidian ~/.codex/skills/web-capture-to-obsidian
+```
+
+调用示例：
+
+- `Use $web-capture-to-obsidian to capture this link into Obsidian`
+- `Use $web-capture-to-obsidian to sync my X bookmarks`
+
+Chrome 前置要求：
+
+- 打开 `chrome://inspect#remote-debugging`
+- 为当前 Chrome 会话开启 remote debugging
+
+### Claude Code
+
+安装路径：
+
+```text
+~/.claude/skills/web-capture-to-obsidian
+```
+
+clone 示例：
+
+```bash
+git clone https://github.com/noroot777/web-capture-to-obsidian.git ~/.claude/skills/web-capture-to-obsidian
+```
+
+软链接示例：
+
+```bash
+ln -s /path/to/web-capture-to-obsidian ~/.claude/skills/web-capture-to-obsidian
+```
+
+调用示例：
+
+- `/web-capture-to-obsidian https://mp.weixin.qq.com/s/...`
+- `Capture this GitHub page with web-capture-to-obsidian`
+
+Chrome 前置要求：
+
+- 打开 `chrome://inspect#remote-debugging`
+- 为当前 Chrome 会话开启 remote debugging
+
+### OpenCode
+
+安装路径：
+
+```text
+~/.config/opencode/skills/web-capture-to-obsidian
+```
+
+clone 示例：
+
+```bash
+git clone https://github.com/noroot777/web-capture-to-obsidian.git ~/.config/opencode/skills/web-capture-to-obsidian
+```
+
+软链接示例：
+
+```bash
+ln -s /path/to/web-capture-to-obsidian ~/.config/opencode/skills/web-capture-to-obsidian
+```
+
+调用示例：
+
+- `Use the web-capture-to-obsidian skill to capture this link`
+- `Use the web-capture-to-obsidian skill to sync my X bookmarks`
+
+Chrome 前置要求：
+
+- 打开 `chrome://inspect#remote-debugging`
+- 为当前 Chrome 会话开启 remote debugging
+
+说明：
+
+- OpenCode 也能识别 `.claude/skills/` 和 `.agents/skills/` 下的兼容 skill，但这份 README 统一采用 `~/.config/opencode/skills/` 作为标准安装路径。
+
+### OpenClaw
+
+安装路径：
+
+```text
+~/.openclaw/workspace/skills/web-capture-to-obsidian
+```
+
+clone 示例：
+
+```bash
+git clone https://github.com/noroot777/web-capture-to-obsidian.git ~/.openclaw/workspace/skills/web-capture-to-obsidian
+```
+
+软链接示例：
+
+```bash
+ln -s /path/to/web-capture-to-obsidian ~/.openclaw/workspace/skills/web-capture-to-obsidian
+```
+
+调用示例：
+
+- `Use the web-capture-to-obsidian skill to save this article to Obsidian`
+- `Use the web-capture-to-obsidian skill to sync my X bookmarks`
+
+Chrome 前置要求：
+
+- 打开 `chrome://inspect#remote-debugging`
+- 为当前 Chrome 会话开启 remote debugging
+
+## 两条工作流
+
+### 1. 抓取单个链接或一段文本
+
+用法：
+
+```bash
+./scripts/organize_knowledge.sh "https://github.com/openai/openai-python"
+```
+
+也可以给一段包含多个 URL 的文本：
+
+```bash
+./scripts/organize_knowledge.sh "Capture these: https://mp.weixin.qq.com/s/... and https://x.com/.../status/123"
+```
+
+也支持标准输入：
+
+```bash
+pbpaste | ./scripts/organize_knowledge.sh
+```
+
+### 2. 同步完整 X 书签
+
+用法：
+
+```bash
+./scripts/sync_x_bookmarks.sh
+```
+
+## 配置方式
+
+通用网页抓取使用：
+
+```text
+web_capture_to_obsidian.env.example -> web_capture_to_obsidian.env
+```
+
+最常改的是：
+
+```bash
+WEB_CAPTURE_TO_OBSIDIAN_TARGET_DIR="$HOME/你的/Obsidian/目录"
+```
+
+X 书签同步继续使用：
+
+```text
+x_bookmarks_sync.env.example -> x_bookmarks_sync.env
+```
+
+最常改的是：
 
 ```bash
 X_BOOKMARKS_TARGET_DIR="$HOME/你的/Obsidian/目录"
 ```
 
+两条流程都支持覆盖：
+
+- 输出目录
+- 状态文件路径
+- `DevToolsActivePort` 路径
+- Chrome 可执行文件路径
+- 时区
+- overrides 文件路径
+
+兼容说明：
+
+- 老的 `knowledge-organizer` 配置文件名和环境变量名仍然可用，但公开主名称已经统一改为 `web-capture-to-obsidian`。
+
+## 输出位置
+
+### 通用网页抓取
+
+默认输出：
+
+```text
+~/Obsidian/Web Capture to Obsidian
+```
+
+会生成：
+
+- 编号笔记
+- `000 - 网页采集索引.md`
+- `.web_capture_to_obsidian_state.json`
+
+### X 书签同步
+
+默认输出：
+
+```text
+~/Obsidian/X Bookmarks
+```
+
+会生成：
+
+- 编号笔记
+- `000 - X 书签索引.md`
+- `.x_bookmarks_state.json`
+
 ## 依赖要求
+
+基础抓取依赖：
 
 - macOS
 - Google Chrome
 - Chrome 144+
 - Python 3
 - `npm`
-- 任意能运行 shell 命令的环境
-- 如果你想走默认的大模型增强模式，需要本机可用的 Codex CLI
 
-如果本机没有安装 `dev-browser`，脚本会自动执行安装。
+可选 agent/runtime 依赖：
 
-## 安装 / 集成方式
+- Codex、Claude Code、OpenCode、OpenClaw 四选一即可
 
-你可以按 3 种方式使用这个项目。
+可选独立自动化依赖：
 
-### 方式 1：直接让大模型帮你安装
+- 如果你希望 shell 脚本自己自动完成 LLM 增强，需要本机安装 Codex CLI
 
-如果你的助手能访问本地文件系统并运行 shell 命令，也可以直接让它帮你装。
-
-可以直接复制这类提示词：
-
-- `帮我安装 x-bookmarks-sync：https://github.com/noroot777/x-bookmarks-sync`
-- `把这个仓库 clone 下来，复制 x_bookmarks_sync.env.example 为 x_bookmarks_sync.env，并帮我改成我的 Obsidian 路径`
-- `把这个项目安装成我本地代理工具里的一个 skill，并让它运行 scripts/sync_x_bookmarks.sh`
-- `在这台机器上配置好 x-bookmarks-sync，然后告诉我怎么用`
-
-一个能执行命令的大模型，通常应该帮你做这些事：
-
-- clone 这个仓库
-- 如果你的宿主有 skills/tools 目录，就放到对应目录
-- 把 `x_bookmarks_sync.env.example` 复制成 `x_bookmarks_sync.env`
-- 把 `X_BOOKMARKS_TARGET_DIR` 改成你真实的 Obsidian 路径
-- 检查 Chrome remote debugging 是否已开启
-- 运行 `./scripts/sync_x_bookmarks.sh`
-- 默认开启大模型参与
-- 如果用户明确说不要模型参与，就改成 `X_BOOKMARKS_USE_LLM=0`
-
-### 方式 2：作为 Codex skill 安装
-
-把整个目录放到你的 Codex skills 目录，例如：
-
-```text
-~/.codex/skills/x-bookmarks-sync
-```
-
-然后你可以直接对 Codex 说：
-
-- `同步 X 书签`
-- `把我的 X 书签到 Obsidian`
-
-### 方式 3：接到其他代理工具
-
-如果你的工具支持自定义 skills、slash commands、prompt snippets 或 shell tasks，就把它指向：
-
-```text
-scripts/sync_x_bookmarks.sh
-```
-
-常见接法：
-
-- 注册一个自定义命令，执行 `./scripts/sync_x_bookmarks.sh`
-- 建一个可复用 prompt，提示代理去运行这个脚本
-- 在任务系统或自动化系统里，把这个脚本作为一个固定任务入口
-
-如果工具本身没有正式的 skill 格式，通常直接调用脚本是最稳的。
-
-## 快速开始
-
-1. 把仓库 clone 或复制到你的机器上
-2. 如果你想自定义输出路径，先把 `x_bookmarks_sync.env.example` 复制成 `x_bookmarks_sync.env`
-3. 在你当前使用的 Chrome 会话里开启 remote debugging
-4. 确保你已经在 Chrome 中登录 X
-5. 运行 `./scripts/sync_x_bookmarks.sh`，或者让你的代理工具调用它
-
-现在默认会让模型参与优化每条笔记的标题、摘要和标签。
-
-如果你想关闭它：
-
-```bash
-X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
-```
-
-## 代理工具里的示例提示词
-
-如果你的代理工具能运行 shell 命令，通常可以直接说：
-
-- `同步 X 书签`
-- `把我的 X 书签到 Obsidian`
-- `刷新我的 X 书签笔记`
-- `运行 x-bookmarks-sync 脚本`
-- `同步我的 X 书签，并让模型优化标题、摘要和标签`
-- `同步我的 X 书签，但不要让 LLM 参与`
-
-## 大模型参与模式
-
-现在的大模型参与是默认行为。
-
-也就是说，直接运行：
-
-```bash
-./scripts/sync_x_bookmarks.sh
-```
-
-就会自动：
-
-1. 导出书签
-2. 分批调用 `codex exec`
-3. 写入 `title`、`summary`、`tags` 覆写
-4. 生成最终笔记
-
-如果你想改成纯规则提取：
-
-```bash
-X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
-```
-
-如果你想指定模型：
-
-```bash
-X_BOOKMARKS_LLM_MODEL=gpt-5.4 ./scripts/sync_x_bookmarks.sh
-```
-
-## 大模型覆写文件
-
-如果是代理在执行，这个项目可以通过下面这个文件让大模型覆写标题、摘要和标签：
-
-```text
-~/.dev-browser/tmp/x-bookmarks-llm-overrides.json
-```
-
-只要这个文件存在，生成脚本就会自动读取。格式参考：
-
-- `x_bookmarks_llm_overrides.example.json`
-- `SKILL.md`
-
-进阶代理执行流程：
-
-1. 运行 `X_BOOKMARKS_SKIP_GENERATE=1 ./scripts/sync_x_bookmarks.sh`
-2. 读取 `~/.dev-browser/tmp/x-bookmarks-export.json`
-3. 把更好的 `title`、`summary` 和 `tags` 写进 `~/.dev-browser/tmp/x-bookmarks-llm-overrides.json`
-4. 运行 `python3 scripts/generate_x_obsidian_notes.py`
-
-## 工作流程
-
-1. 检查 Chrome 版本是否满足要求
-2. 如果没装 `dev-browser`，自动执行 `npm install -g dev-browser`
-3. 从本机 Chrome 配置里读取 `DevToolsActivePort`
-4. 连接到你当前已经打开的 Chrome 会话
-5. 导出 X 书签
-6. 按需执行大模型覆写步骤
-7. 重新生成 Obsidian 笔记与索引页
+如果本机没有安装 `dev-browser`，脚本会自动安装。
 
 ## Chrome 一次性准备
 
-先在 Chrome 中启用当前会话的远程调试：
-
 1. 打开 Chrome
-2. 访问：
+2. 访问 `chrome://inspect#remote-debugging`
+3. 为当前浏览器会话开启 remote debugging
 
-```text
-chrome://inspect#remote-debugging
-```
+如果之后 Chrome 弹出授权框，点 `Allow` 后重新执行命令即可。
 
-3. 开启 remote debugging
+## 支持的来源
 
-之后这个脚本才能连接你当前的 Chrome 会话。
+- 微信公众号文章
+- GitHub 仓库、Issue、PR、Discussion
+- X / Twitter 帖子页面
+- 当前 Chrome 会话里能正常打开的普通网页
 
-## 关于授权弹窗
+## 仓库结构
 
-Chrome 在建立新的远程调试连接时，可能会弹出权限确认框。
+- `SKILL.md`：四个 client 共用的 skill 定义
+- `scripts/organize_knowledge.sh`：通用 URL / 文本抓取入口
+- `scripts/export_knowledge_pages.devbrowser.js`：多来源网页抓取
+- `scripts/generate_knowledge_llm_overrides.py`：通用网页的可选 Codex 独立自动化助手
+- `scripts/generate_knowledge_obsidian_notes.py`：通用网页笔记生成
+- `scripts/sync_x_bookmarks.sh`：X 全量书签同步
+- `scripts/generate_x_llm_overrides.py`：X 书签的可选 Codex 独立自动化助手
+- `scripts/generate_x_obsidian_notes.py`：X 书签笔记生成
 
-所以真实体验通常是：
+## 说明
 
-- 有时可以直接同步，不用点任何东西
-- 有时会弹出 `Allow`，需要你手动确认
-
-如果出现弹窗，点一下 `Allow`，然后重新执行同步即可。
-
-## 增量同步逻辑
-
-这个流程的“增量”是结果层面的增量，不是纯 API 增量请求。
-
-意思是：
-
-- 已同步过的书签保留原编号
-- 新书签从下一个编号继续追加
-- 不会因为后续同步而重排旧笔记
-- 编号依据是收藏列表顺序，不是发帖时间
-
-同时它还做了“提前停止”优化：
-
-- 会先从 `.x_bookmarks_state.json` 读取已同步书签链接
-- 滚动抓取时，如果连续几批内容大部分都已经同步过，就提前停止
-
-这样重复同步时，通常会比每次都完整滚到底更快。
-
-## 独立脚本运行
-
-不依赖任何 skill 系统，直接运行：
-
-```bash
-./scripts/sync_x_bookmarks.sh
-```
-
-如果你想强制改成纯规则提取：
-
-```bash
-X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
-```
-
-可选本地配置文件：
-
-```text
-./x_bookmarks_sync.env
-```
-
-如果你是在别的目录调用，也可以这样运行：
-
-```bash
-bash /path/to/x-bookmarks-sync/scripts/sync_x_bookmarks.sh
-```
-
-## 目录说明
-
-- `SKILL.md`
-  - 供支持 skill 元数据的工具使用的示例定义
-- `x_bookmarks_llm_overrides.example.json`
-  - 大模型生成标题、摘要和标签覆盖结果时的示例格式
-- `scripts/generate_x_llm_overrides.py`
-  - 通过 `codex exec` 批量生成大模型覆写
-- `scripts/sync_x_bookmarks.sh`
-  - 环境检查、Chrome 连接、默认同步入口
-- `scripts/export_x_bookmarks.devbrowser.js`
-  - 书签抓取与“遇到旧书签批次提前停止”的逻辑
-- `scripts/generate_x_obsidian_notes.py`
-  - 笔记生成、编号维护、状态文件维护、索引页生成
-
-## 注意事项
-
-- 这个项目不是普通未登录爬虫，而是借用你自己已登录的 Chrome 会话，所以成功率会高很多。
-- 但它不是“万能跳过反爬”方案。
-- 如果 X 修改页面结构、登录流程、风控策略，这个项目可能需要更新。
-- 如果 Chrome 版本太低，脚本会直接给出明确提示。
-- 如果没开启 remote debugging，脚本也会直接提示。
-- 默认输出路径只是通用示例。针对你自己的机器路径，建议放到 `x_bookmarks_sync.env` 里配置，不要直接改源码。
-
-## 安全提醒
-
-这个项目会读取你已登录浏览器会话中的内容。请只在你信任的机器、信任的账号环境里使用。
+- 这是“skill 层面跨 client 兼容”的方案：同一份 `SKILL.md` 供 Codex、Claude Code、OpenCode、OpenClaw 使用。
+- 默认的跨 client LLM 路径是“当前 agent 会话生成 overrides”，不是“所有 client 都实现一套统一的 headless CLI runner”。
+- 基于 Codex CLI 的独立 shell 自动化仍然保留，但它现在是可选模式，不再是这个项目的唯一主路径。

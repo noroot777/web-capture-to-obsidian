@@ -1,113 +1,109 @@
 ---
-name: x-bookmarks-sync
-description: Sync the user's X.com bookmarks into Obsidian notes using the user's already logged-in Chrome session. Use this when the user asks to sync, refresh, import, capture, or update X bookmarks into Obsidian, especially for requests like "同步 X 书签", "抓取我的 X 书签", "更新 Obsidian 里的 X 书签", or "把最新书签同步进去".
+name: web-capture-to-obsidian
+description: Capture one or more web links into Obsidian notes. Use this when the user wants to save a URL, paste text that contains URLs, capture WeChat/GitHub/X/general web pages into Obsidian, or sync full X bookmarks.
 ---
 
-# X Bookmarks Sync
+# Web Capture to Obsidian
 
-Syncs X bookmarks from the user's real Chrome session into a configurable Obsidian directory.
+Capture saved links and X bookmarks from the user's real Chrome session into Obsidian.
 
-## Workflow
+## Recommended Cross-Client Workflow
 
-1. By default, run:
-   - `./scripts/sync_x_bookmarks.sh`
-2. That script now:
-   - exports bookmarks
-   - uses the model to generate `title`, `summary`, and `tags`
-   - writes overrides to `X_BOOKMARKS_LLM_OVERRIDES_FILE`
+Use this workflow in Codex, Claude Code, OpenCode, and OpenClaw.
+
+### For one link or pasted text containing URLs
+
+1. Run export-only capture:
+   - `WEB_CAPTURE_TO_OBSIDIAN_SKIP_GENERATE=1 ./scripts/organize_knowledge.sh "<user input>"`
+2. Read the exported JSON from:
+   - `WEB_CAPTURE_TO_OBSIDIAN_SOURCE_JSON`
+   - default: `~/.dev-browser/tmp/web-capture-to-obsidian-export.json`
+3. Generate better `title`, `summary`, and `tags` in the current agent session.
+4. Write overrides to:
+   - `WEB_CAPTURE_TO_OBSIDIAN_LLM_OVERRIDES_FILE`
+   - default: `~/.dev-browser/tmp/web-capture-to-obsidian-llm-overrides.json`
+5. Follow the JSON shape from:
+   - [`web_capture_to_obsidian_llm_overrides.example.json`](web_capture_to_obsidian_llm_overrides.example.json)
+6. Generate final notes:
+   - `python3 scripts/generate_knowledge_obsidian_notes.py`
+
+### For full X bookmark sync
+
+1. Run export-only sync:
+   - `X_BOOKMARKS_SKIP_GENERATE=1 ./scripts/sync_x_bookmarks.sh`
+2. Read the exported JSON from:
+   - `X_BOOKMARKS_SOURCE_JSON`
+   - default: `~/.dev-browser/tmp/x-bookmarks-export.json`
+3. Generate better `title`, `summary`, and `tags` in the current agent session.
+4. Write overrides to:
+   - `X_BOOKMARKS_LLM_OVERRIDES_FILE`
    - default: `~/.dev-browser/tmp/x-bookmarks-llm-overrides.json`
-   - generates the final Obsidian notes
-3. If the user explicitly says not to use the model, run:
-   - `X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh`
-4. Report how many bookmarks were synced and where the notes were written.
+5. Follow the JSON shape from:
+   - [`x_bookmarks_llm_overrides.example.json`](x_bookmarks_llm_overrides.example.json)
+6. Generate final notes:
+   - `python3 scripts/generate_x_obsidian_notes.py`
+
+## Standalone Shell Automation
+
+Optional standalone shell automation is still available:
+
+- `./scripts/organize_knowledge.sh "<user input>"`
+- `./scripts/sync_x_bookmarks.sh`
+
+In standalone LLM mode, the shell scripts use the local `codex` CLI. If `codex` is not installed, disable LLM participation or use the recommended cross-client workflow above.
 
 ## User Choice
 
-Treat LLM participation as the default.
+- If the user wants to capture one link or pasted text with URLs, use `scripts/organize_knowledge.sh`.
+- If the user wants full X bookmark sync, use `scripts/sync_x_bookmarks.sh`.
+- If the user explicitly says not to use the model, disable LLM participation and skip overrides.
+- If the user wants a custom output path, tell them to create `web_capture_to_obsidian.env` or `x_bookmarks_sync.env` from the example files instead of editing the scripts directly.
 
-- If the user says `同步 X 书签`, `抓取我的 X 书签`, or similar, let the model participate.
-- If the user says `不要让 LLM 参与`, `不用模型`, `without llm`, or similar, set `X_BOOKMARKS_USE_LLM=0`.
-- If the user wants a custom model, set `X_BOOKMARKS_LLM_MODEL`.
+## Supported Sources
 
-## LLM Override Format
+- WeChat article links such as `https://mp.weixin.qq.com/...`
+- GitHub repositories, issues, pull requests, discussions, and README pages
+- X / Twitter post links
+- Generic web pages accessible from the user's current Chrome session
+- Full X bookmark list sync from `https://x.com/i/bookmarks`
 
-Write JSON in either of these shapes:
+## Input Handling
 
-```json
-{
-  "entries": {
-    "https://x.com/.../status/123": {
-      "title": "Better title here",
-      "summary": [
-        "First key point",
-        "Second key point",
-        "Third key point"
-      ],
-      "tags": [
-        "automation",
-        "agents",
-        "workflow"
-      ]
-    }
-  }
-}
-```
-
-Or:
-
-```json
-{
-  "https://x.com/.../status/123": {
-    "title": "Better title here",
-    "summary": "- First key point\n- Second key point",
-    "tags": [
-      "automation",
-      "agents"
-    ]
-  }
-}
-```
-
-See also:
-
-- [`x_bookmarks_llm_overrides.example.json`](x_bookmarks_llm_overrides.example.json)
+- `scripts/organize_knowledge.sh` accepts:
+  - a direct URL
+  - a pasted paragraph that contains one or more URLs
+  - piped text from stdin
+- It extracts unique `http://` and `https://` URLs in appearance order.
 
 ## Extraction Guidance
 
-When generating `title` and `summary`:
+When generating `title` and `summary` for any source:
 
 - Prefer the real core idea over the first visible line.
-- Remove handles, metrics, and low-signal UI boilerplate.
-- For link-heavy posts, summarize what the linked resource is about.
+- Remove handles, metrics, navigation text, and low-signal UI boilerplate.
+- For link-heavy pages, summarize what the linked resource is about.
 - Keep `title` concise and filename-friendly.
 - Keep `summary` to 2-4 concrete bullets.
 - Return tags that are specific enough to be useful in Obsidian.
 
-## Shell Entry Point
-
-[`scripts/sync_x_bookmarks.sh`](scripts/sync_x_bookmarks.sh) will:
-
-- verify that the installed Chrome version supports the current-session remote-debugging flow
-- auto-install `dev-browser` if it is missing
-- reuse the user's logged-in Chrome session via `chrome://inspect#remote-debugging`
-- export bookmarks
-- generate LLM overrides by default
-- optionally skip LLM participation when `X_BOOKMARKS_USE_LLM=0`
-- optionally skip final generation when `X_BOOKMARKS_SKIP_GENERATE=1`
-
-If Chrome shows a remote-debugging permission prompt, wait for the user to click `Allow`, then rerun the sync script.
-If the user wants a custom location, tell them to create `x_bookmarks_sync.env` from `x_bookmarks_sync.env.example` instead of editing the scripts directly.
-
 ## What It Writes
 
-- One note per bookmark under `X_BOOKMARKS_TARGET_DIR`
-- Stable numbered filenames like `001 - 标题 - 时间 - 作者.md`
-- Numbering follows bookmark-list order from bottom to top: the oldest bookmark currently at the bottom of the list is `001`, and newer bookmarks continue upward with larger numbers
-- `000 - X 书签索引.md` for ordered browsing
-- `.x_bookmarks_state.json` to preserve numbering across future syncs
+- For generic links:
+  - one note per captured URL under `WEB_CAPTURE_TO_OBSIDIAN_TARGET_DIR`
+  - stable numbered filenames
+  - `000 - 网页采集索引.md`
+  - `.web_capture_to_obsidian_state.json`
+- For full X bookmark sync:
+  - one note per bookmark under `X_BOOKMARKS_TARGET_DIR`
+  - stable numbered filenames
+  - `000 - X 书签索引.md`
+  - `.x_bookmarks_state.json`
 
 ## Notes
 
-- This uses the user's authenticated Chrome session, so it is much more reliable than a normal unauthenticated scraper, but it is not a guaranteed bypass for every X anti-bot check.
-- This skill expects a Chrome version that supports the current-session remote-debugging flow from `chrome://inspect#remote-debugging`. If the local Chrome is too old, the script exits with a clear message instead of failing silently.
-- If the user wants a different Obsidian path, use `x_bookmarks_sync.env`. If they want a different naming scheme or note format, update [`scripts/generate_x_obsidian_notes.py`](scripts/generate_x_obsidian_notes.py) and rerun the sync.
+- This uses the user's authenticated Chrome session, so it is much more reliable than an unauthenticated scraper, but it is not a guaranteed bypass for every site restriction.
+- This skill expects Chrome with the current-session remote-debugging flow from `chrome://inspect#remote-debugging`.
+- The current minimal note template is intentional:
+  - frontmatter: `tags`, `source_type`, `source_host`
+  - body: `摘要`, `页面摘录`
+- Legacy `knowledge-organizer` environment variable names are still accepted for compatibility, but `web-capture-to-obsidian` is now the primary public name.

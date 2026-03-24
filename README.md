@@ -1,4 +1,4 @@
-# X Bookmarks Sync
+# Web Capture to Obsidian
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-black)
@@ -7,304 +7,351 @@
 
 [中文说明](./README.zh-CN.md)
 
-Sync your X.com bookmarks into Obsidian notes by reusing your real, logged-in Chrome session.
-Use it either as a standalone shell workflow or as a skill/integration inside an agent tool.
+`web-capture-to-obsidian` is a cross-client Agent Skill package for capturing web content into Obsidian.
 
-Recommended mode: use LLM participation by default, and only disable it when you explicitly want pure rule-based extraction.
+It supports:
+
+- a single URL
+- pasted text that contains one or more URLs
+- WeChat, GitHub, X, and generic web pages
+- the original full X bookmarks sync workflow
+
+This project started as `x-bookmarks-sync`, but the scope is now broader: web capture first, Obsidian output second, X bookmarks still supported as one workflow inside the same package.
 
 ## At a glance
 
-- Uses your existing authenticated Chrome session instead of a separate scraper login
-- Exports bookmarks from `https://x.com/i/bookmarks`
-- Generates one Markdown note per bookmark in Obsidian
-- Keeps stable incremental numbering across repeated syncs
-- Numbers bookmarks by bookmark-list order, from the bottom oldest item upward
+- Reuses your real logged-in Chrome session through remote debugging
+- Uses `dev-browser` for repeatable browser automation
+- Works as a shared `SKILL.md` package across Codex, Claude Code, OpenCode, and OpenClaw
+- Lets the active agent session generate titles, summaries, and tags
+- Still supports optional standalone shell automation with Codex CLI
+- Writes compact Obsidian notes with frontmatter plus `摘要` and `页面摘录`
 
-This project is useful for local desktop workflows where:
+## Recommended flow
 
-- you are already signed in to X in Chrome
-- you want one Obsidian note per bookmark
-- you want stable numbering across repeated syncs
-- you want future syncs to append new bookmarks instead of renumbering old ones
+The recommended cross-client flow is:
 
-## What it does
+1. Run browser export with the shell scripts
+2. Let the current agent session read the exported JSON
+3. Let the agent write the overrides JSON
+4. Run the generator script to write final Obsidian notes
 
-- Connects to your current Chrome session through remote debugging
-- Reads your X bookmarks from `https://x.com/i/bookmarks`
-- Writes one Markdown note per bookmark into your Obsidian vault
-- Supports LLM-written title, summary, and tag overrides during agent execution
-- Preserves numbering with filenames like:
-
-```text
-001 - Title - YYYY-MM-DD HHMMSS - author.md
-002 - Title - YYYY-MM-DD HHMMSS - author.md
-```
-
-- Numbering follows bookmark-list order from bottom to top:
-  - the oldest bookmark at the bottom of the list is `001`
-  - newer bookmarks higher in the list get larger numbers
-
-- Maintains:
-  - `000 - X 书签索引.md` as an ordered index page
-  - `.x_bookmarks_state.json` as sync state for incremental numbering
-
-## Current output path
-
-By default, notes are written to:
-
-```text
-~/Obsidian/X Bookmarks
-```
-
-You do not need to edit the scripts to change this.
-
-Copy `x_bookmarks_sync.env.example` to `x_bookmarks_sync.env` and set:
+For generic web capture:
 
 ```bash
-X_BOOKMARKS_TARGET_DIR="$HOME/path/to/your/Obsidian/folder"
+WEB_CAPTURE_TO_OBSIDIAN_SKIP_GENERATE=1 ./scripts/organize_knowledge.sh "https://github.com/openai/openai-python"
+python3 scripts/generate_knowledge_obsidian_notes.py
 ```
 
-## Requirements
-
-- macOS
-- Google Chrome
-- Chrome 144+ for the current-session remote-debugging flow used by this project
-- Python 3
-- `npm`
-- Any environment that can run shell commands
-- Codex CLI if you want the default LLM-assisted mode
-
-`dev-browser` will be installed automatically if it is missing.
-
-## Installation options
-
-You can use this project in three common ways.
-
-### Option 1: Ask an LLM agent to install it for you
-
-If your assistant can access your filesystem and run shell commands, you can ask it to install this repo for you.
-
-Example prompts:
-
-- `Help me install x-bookmarks-sync from https://github.com/noroot777/x-bookmarks-sync`
-- `Clone this repo, copy x_bookmarks_sync.env.example to x_bookmarks_sync.env, and configure it for my Obsidian folder`
-- `Install this as a skill in my local agent setup and make it run scripts/sync_x_bookmarks.sh`
-- `Set up x-bookmarks-sync on this machine and tell me how to run it`
-
-What the agent should generally do:
-
-- clone the repository
-- place it in the correct skills/tools directory if your host uses one
-- copy `x_bookmarks_sync.env.example` to `x_bookmarks_sync.env`
-- set `X_BOOKMARKS_TARGET_DIR` to your actual Obsidian path
-- verify Chrome remote debugging is enabled
-- run `./scripts/sync_x_bookmarks.sh`
-- keep LLM participation enabled by default
-- allow `X_BOOKMARKS_USE_LLM=0` when the user explicitly asks for no model involvement
-
-### Option 2: Install it as a Codex skill
-
-Place this folder in your Codex skills directory, for example:
-
-```text
-~/.codex/skills/x-bookmarks-sync
-```
-
-Then ask Codex something like:
-
-- `Sync X bookmarks`
-- `Sync my X bookmarks into Obsidian`
-
-### Option 3: Integrate it into other agent tools
-
-If your tool supports custom skills, slash commands, prompt libraries, or shell tasks, point it at:
-
-```text
-scripts/sync_x_bookmarks.sh
-```
-
-Typical patterns:
-
-- register a custom command that runs `./scripts/sync_x_bookmarks.sh`
-- add a reusable prompt/snippet that tells the agent to run that script
-- create a task or automation entry that launches the sync script in this repo
-
-For tools without a formal skill format, using the shell script directly is usually the simplest setup.
-
-## Quick start
-
-1. Clone or copy this repo to your machine
-2. Copy `x_bookmarks_sync.env.example` to `x_bookmarks_sync.env` if you want a custom output path
-3. Enable remote debugging in your current Chrome session
-4. Make sure you are already signed in to X in Chrome
-5. Run `./scripts/sync_x_bookmarks.sh` or call it from your agent tool
-
-By default, the sync uses the model to improve each note's title, summary, and tags.
-
-If you want to turn that off:
+For X bookmarks:
 
 ```bash
-X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
+X_BOOKMARKS_SKIP_GENERATE=1 ./scripts/sync_x_bookmarks.sh
+python3 scripts/generate_x_obsidian_notes.py
 ```
 
-## Example prompts for agent tools
+In normal skill usage, the active agent session should create the overrides JSON itself.
 
-If your agent can run shell commands, prompts such as these usually work:
+Generic overrides shape:
 
-- `Sync X bookmarks`
-- `Sync my X bookmarks into Obsidian`
-- `Refresh my X bookmarks notes`
-- `Run the x-bookmarks-sync script`
-- `Sync my X bookmarks and let the model improve titles, summaries, and tags`
-- `Sync my X bookmarks, but do not use the model`
+- [`web_capture_to_obsidian_llm_overrides.example.json`](./web_capture_to_obsidian_llm_overrides.example.json)
 
-## LLM Participation
+X bookmark overrides shape:
 
-LLM participation is now the default behavior.
+- [`x_bookmarks_llm_overrides.example.json`](./x_bookmarks_llm_overrides.example.json)
 
-That means `./scripts/sync_x_bookmarks.sh` will:
+## Standalone shell automation
 
-1. export bookmarks from your real Chrome session
-2. call `codex exec` in batches
-3. write `title`, `summary`, and `tags` overrides
-4. generate the final notes
-
-If you want pure rule-based extraction instead:
+Standalone shell automation is still available:
 
 ```bash
-X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
+./scripts/organize_knowledge.sh "https://github.com/openai/openai-python"
+./scripts/sync_x_bookmarks.sh
 ```
 
-If you want to choose a different model:
+In that mode, the LLM enhancement step uses the local `codex` CLI. If you do not want that dependency, either disable LLM participation or use the recommended agent-driven flow above.
+
+## Installation in AI clients
+
+Current public Git URL:
+
+```text
+https://github.com/noroot777/web-capture-to-obsidian.git
+```
+
+The install directory and skill name should use `web-capture-to-obsidian`. You can also use the local symlink examples.
+
+### Codex
+
+Install path:
+
+```text
+~/.codex/skills/web-capture-to-obsidian
+```
+
+Clone example:
 
 ```bash
-X_BOOKMARKS_LLM_MODEL=gpt-5.4 ./scripts/sync_x_bookmarks.sh
+git clone https://github.com/noroot777/web-capture-to-obsidian.git ~/.codex/skills/web-capture-to-obsidian
 ```
 
-## LLM Override File
+Symlink example:
 
-If an agent is running this project, it can improve title, summary, and tag quality by writing:
+```bash
+ln -s /path/to/web-capture-to-obsidian ~/.codex/skills/web-capture-to-obsidian
+```
+
+Invocation example:
+
+- `Use $web-capture-to-obsidian to capture this link into Obsidian`
+- `Use $web-capture-to-obsidian to sync my X bookmarks`
+
+Chrome prerequisite:
+
+- Open `chrome://inspect#remote-debugging`
+- Enable remote debugging for the current Chrome session
+
+### Claude Code
+
+Install path:
 
 ```text
-~/.dev-browser/tmp/x-bookmarks-llm-overrides.json
+~/.claude/skills/web-capture-to-obsidian
 ```
 
-The generator automatically reads that file when present. See:
+Clone example:
 
-- `x_bookmarks_llm_overrides.example.json`
-- `SKILL.md`
+```bash
+git clone https://github.com/noroot777/web-capture-to-obsidian.git ~/.claude/skills/web-capture-to-obsidian
+```
 
-Advanced agent flow:
+Symlink example:
 
-1. Run `X_BOOKMARKS_SKIP_GENERATE=1 ./scripts/sync_x_bookmarks.sh`
-2. Read `~/.dev-browser/tmp/x-bookmarks-export.json`
-3. Write better `title`, `summary`, and `tags` values into `~/.dev-browser/tmp/x-bookmarks-llm-overrides.json`
-4. Run `python3 scripts/generate_x_obsidian_notes.py`
+```bash
+ln -s /path/to/web-capture-to-obsidian ~/.claude/skills/web-capture-to-obsidian
+```
 
-## How it works
+Invocation example:
 
-1. The sync script checks that Chrome is new enough.
-2. If `dev-browser` is missing, it installs it with `npm install -g dev-browser`.
-3. It reads Chrome's `DevToolsActivePort` from the local profile.
-4. It connects to your already-running Chrome session.
-5. It exports bookmarks from X.
-6. It optionally runs the LLM override step.
-7. It regenerates the Obsidian notes and index.
+- `/web-capture-to-obsidian https://mp.weixin.qq.com/s/...`
+- `Capture this GitHub page with web-capture-to-obsidian`
 
-## One-time Chrome setup
+Chrome prerequisite:
 
-Enable Chrome remote debugging for the active browser session:
+- Open `chrome://inspect#remote-debugging`
+- Enable remote debugging for the current Chrome session
 
-1. Open Chrome
-2. Visit:
+### OpenCode
+
+Install path:
 
 ```text
-chrome://inspect#remote-debugging
+~/.config/opencode/skills/web-capture-to-obsidian
 ```
 
-3. Enable remote debugging
+Clone example:
 
-After that, the script can attempt to connect to your current Chrome session.
+```bash
+git clone https://github.com/noroot777/web-capture-to-obsidian.git ~/.config/opencode/skills/web-capture-to-obsidian
+```
 
-## Permission prompt behavior
+Symlink example:
 
-Chrome may show a permission dialog when a new remote-debugging connection is created.
+```bash
+ln -s /path/to/web-capture-to-obsidian ~/.config/opencode/skills/web-capture-to-obsidian
+```
 
-That means:
+Invocation example:
 
-- sometimes the sync runs without extra interaction
-- sometimes Chrome asks you to click `Allow`
+- `Use the web-capture-to-obsidian skill to capture this link`
+- `Use the web-capture-to-obsidian skill to sync my X bookmarks`
 
-If that prompt appears, click `Allow` and run the sync again.
+Chrome prerequisite:
 
-## Incremental sync behavior
+- Open `chrome://inspect#remote-debugging`
+- Enable remote debugging for the current Chrome session
 
-This workflow is incremental in result, not purely incremental in transport.
+Notes:
 
-What that means:
+- OpenCode also discovers compatible skills from `.claude/skills/` and `.agents/skills/`, but the standard install location in this README is `~/.config/opencode/skills/`.
 
-- existing bookmarks keep their original sequence numbers
-- new bookmarks get appended with the next numbers
-- old notes are not renumbered on future syncs
-- numbering is based on bookmark-list order, not tweet/post timestamp
+### OpenClaw
 
-It also tries to stop early during scrolling:
+Install path:
 
-- the exporter loads known bookmark links from `.x_bookmarks_state.json`
-- if it sees several consecutive batches that are mostly already-synced bookmarks, it stops scrolling early
+```text
+~/.openclaw/workspace/skills/web-capture-to-obsidian
+```
 
-This makes repeated syncs faster than a full scroll every time.
+Clone example:
 
-## Standalone shell usage
+```bash
+git clone https://github.com/noroot777/web-capture-to-obsidian.git ~/.openclaw/workspace/skills/web-capture-to-obsidian
+```
 
-You can run the sync directly without any skill system:
+Symlink example:
+
+```bash
+ln -s /path/to/web-capture-to-obsidian ~/.openclaw/workspace/skills/web-capture-to-obsidian
+```
+
+Invocation example:
+
+- `Use the web-capture-to-obsidian skill to save this article to Obsidian`
+- `Use the web-capture-to-obsidian skill to sync my X bookmarks`
+
+Chrome prerequisite:
+
+- Open `chrome://inspect#remote-debugging`
+- Enable remote debugging for the current Chrome session
+
+## Workflows
+
+### 1. Capture one link or pasted text
+
+Use:
+
+```bash
+./scripts/organize_knowledge.sh "https://github.com/openai/openai-python"
+```
+
+You can also paste a paragraph that contains multiple URLs:
+
+```bash
+./scripts/organize_knowledge.sh "Capture these: https://mp.weixin.qq.com/s/... and https://x.com/.../status/123"
+```
+
+Or pipe text in:
+
+```bash
+pbpaste | ./scripts/organize_knowledge.sh
+```
+
+### 2. Sync full X bookmarks
+
+Use:
 
 ```bash
 ./scripts/sync_x_bookmarks.sh
 ```
 
-To force pure rule-based extraction instead:
+## Configuration
 
-```bash
-X_BOOKMARKS_USE_LLM=0 ./scripts/sync_x_bookmarks.sh
-```
-
-Optional local config file:
+For generic capture:
 
 ```text
-./x_bookmarks_sync.env
+web_capture_to_obsidian.env.example -> web_capture_to_obsidian.env
 ```
 
-From another directory, you can also run:
+Main setting:
 
 ```bash
-bash /path/to/x-bookmarks-sync/scripts/sync_x_bookmarks.sh
+WEB_CAPTURE_TO_OBSIDIAN_TARGET_DIR="$HOME/path/to/your/Obsidian/folder"
 ```
 
-## Files
+For X bookmarks:
 
-- `SKILL.md`
-  - an example skill definition for tools that support skill-style metadata
-- `x_bookmarks_llm_overrides.example.json`
-  - example format for LLM-generated title, summary, and tag overrides
-- `scripts/generate_x_llm_overrides.py`
-  - batch LLM override generation through `codex exec`
-- `scripts/sync_x_bookmarks.sh`
-  - environment checks, Chrome endpoint discovery, default sync entrypoint
-- `scripts/export_x_bookmarks.devbrowser.js`
-  - bookmark export and early-stop scrolling logic
-- `scripts/generate_x_obsidian_notes.py`
-  - note generation, numbering, state tracking, index generation
+```text
+x_bookmarks_sync.env.example -> x_bookmarks_sync.env
+```
 
-## Notes and limitations
+Main setting:
 
-- This project is more reliable than a normal unauthenticated scraper because it uses your real logged-in Chrome session.
-- It is not a universal anti-bot bypass.
-- If X changes page structure, login flow, or anti-automation behavior, this project may need updates.
-- If Chrome is too old, the script exits with a clear version message.
-- If remote debugging is not enabled, the script exits with instructions.
-- The default output path is only a safe example. Use `x_bookmarks_sync.env` for your own machine-specific settings.
+```bash
+X_BOOKMARKS_TARGET_DIR="$HOME/path/to/your/Obsidian/folder"
+```
 
-## Related caution
+Both flows support overriding:
 
-This project reads content from your authenticated browser session. Use it only on machines and accounts you trust.
+- output directory
+- state file path
+- `DevToolsActivePort` path
+- Chrome binary path
+- timezone
+- LLM override file path
+
+Compatibility note:
+
+- Legacy `knowledge-organizer` config file and environment variable names are still accepted, but `web-capture-to-obsidian` is now the canonical public name.
+
+## Output
+
+### Generic web capture
+
+Default output path:
+
+```text
+~/Obsidian/Web Capture to Obsidian
+```
+
+Files include:
+
+- numbered notes
+- `000 - 网页采集索引.md`
+- `.web_capture_to_obsidian_state.json`
+
+### X bookmarks sync
+
+Default output path:
+
+```text
+~/Obsidian/X Bookmarks
+```
+
+Files include:
+
+- numbered notes
+- `000 - X 书签索引.md`
+- `.x_bookmarks_state.json`
+
+## Requirements
+
+Base capture requirements:
+
+- macOS
+- Google Chrome
+- Chrome 144+ for the current-session remote-debugging flow
+- Python 3
+- `npm`
+
+Optional agent/runtime requirements:
+
+- one of: Codex, Claude Code, OpenCode, or OpenClaw
+
+Optional standalone automation requirement:
+
+- Codex CLI if you want the shell scripts themselves to perform LLM enhancement automatically
+
+If `dev-browser` is missing, the scripts install it automatically.
+
+## One-time Chrome setup
+
+1. Open Chrome
+2. Visit `chrome://inspect#remote-debugging`
+3. Enable remote debugging for the active browser session
+
+If Chrome later shows a permission dialog, click `Allow` and rerun the command.
+
+## Supported sources
+
+- WeChat public article pages
+- GitHub repositories, issues, pull requests, and discussions
+- X / Twitter post pages
+- Generic webpages accessible from your current Chrome session
+
+## Repository layout
+
+- `SKILL.md`: shared skill definition for all supported clients
+- `scripts/organize_knowledge.sh`: generic URL/text capture entrypoint
+- `scripts/export_knowledge_pages.devbrowser.js`: multi-source page capture
+- `scripts/generate_knowledge_llm_overrides.py`: optional standalone Codex automation helper for generic links
+- `scripts/generate_knowledge_obsidian_notes.py`: generic Obsidian note generation
+- `scripts/sync_x_bookmarks.sh`: full X bookmarks sync
+- `scripts/generate_x_llm_overrides.py`: optional standalone Codex automation helper for X bookmarks
+- `scripts/generate_x_obsidian_notes.py`: X bookmark note generation
+
+## Notes
+
+- This package is cross-client at the skill level: the same `SKILL.md` works across Codex, Claude Code, OpenCode, and OpenClaw.
+- The default cross-client LLM path is agent-driven, not CLI-runner-driven.
+- Standalone Codex shell automation remains supported, but it is optional.
