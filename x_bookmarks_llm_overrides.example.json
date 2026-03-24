@@ -6,6 +6,11 @@
         "First key takeaway from the post",
         "Second key takeaway or linked resource",
         "Third key takeaway if needed"
+      ],
+      "tags": [
+        "x-bookmarks",
+        "automation",
+        "agents"
       ]
     }
   }

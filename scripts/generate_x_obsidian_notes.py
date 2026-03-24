@@ -44,6 +44,42 @@ MONTHS = {
     "Dec": 12,
 }
 
+TAG_RULES = [
+    (("skill", "skills", "技能"), "skills"),
+    (("agent", "agents", "智能体", "代理"), "agents"),
+    (("automation", "自动化"), "automation"),
+    (("workflow", "工作流"), "workflow"),
+    (("llm", "大模型"), "llm"),
+    (("claude",), "claude"),
+    (("codex",), "codex"),
+    (("cursor",), "cursor"),
+    (("gemini",), "gemini"),
+    (("openclaw",), "openclaw"),
+    (("mem9", "记忆", "memory"), "memory"),
+    (("playwright",), "playwright"),
+    (("browser", "浏览器"), "browser-automation"),
+    (("爬虫", "scraping", "scraper"), "web-scraping"),
+    (("test", "testing", "测试"), "testing"),
+    (("github", "开源", "open source", "opensource"), "open-source"),
+    (("mac", "macos"), "macos"),
+    (("ios", "xcode", "app store"), "ios"),
+    (("obsidian",), "obsidian"),
+    (("video", "视频"), "video"),
+    (("design", "设计"), "design"),
+    (("search", "检索"), "search"),
+    (("tutorial", "教程", "学习"), "learning"),
+    (("cli",), "cli"),
+    (("telegram",), "telegram"),
+    (("discord",), "discord"),
+    (("飞书", "feishu"), "feishu"),
+    (("api",), "api"),
+    (("paper", "论文"), "papers"),
+    (("document", "文档", "pandoc"), "documents"),
+    (("ui", "界面"), "ui"),
+    (("desktop", "桌面"), "desktop"),
+    (("prompt", "提示词"), "prompts"),
+]
+
 
 def is_metric(line: str) -> bool:
     return bool(re.fullmatch(r"[\d,.]+[KMB]?", line))
@@ -179,6 +215,36 @@ def format_summary_lines(summary_lines):
     return "\n".join(f"- {part}" for part in clean)
 
 
+def derive_tags(item, title, summary, overrides=None):
+    override = item_override(item, overrides)
+    custom_tags = override.get("tags")
+    if isinstance(custom_tags, str) and custom_tags.strip():
+        tags = [part.strip().lstrip("#") for part in re.split(r"[,\n]+", custom_tags) if part.strip()]
+        if tags:
+            return tags[:6]
+    if isinstance(custom_tags, list):
+        tags = [str(part).strip().lstrip("#") for part in custom_tags if str(part).strip()]
+        if tags:
+            return tags[:6]
+
+    text = "\n".join(
+        [
+            title,
+            summary.replace("- ", ""),
+            item.get("text", ""),
+            "\n".join(item.get("links", [])),
+        ]
+    ).lower()
+
+    tags = ["x-bookmarks"]
+    for keywords, tag in TAG_RULES:
+        if any(keyword.lower() in text for keyword in keywords):
+            tags.append(tag)
+        if len(tags) >= 6:
+            break
+    return list(dict.fromkeys(tags))
+
+
 def derive_summary(item, title, overrides=None):
     override = item_override(item, overrides)
     custom_summary = override.get("summary")
@@ -265,6 +331,7 @@ def note_filename(item, duplicate_index: int = 0, overrides=None) -> str:
 def note_content(item, overrides=None):
     title = derive_title(item, overrides)
     summary = derive_summary(item, title, overrides)
+    tags = derive_tags(item, title, summary, overrides)
     source = item.get("statusLink", "")
     author = item.get("author", "").strip()
     handle = item.get("handle", "").strip()
@@ -277,8 +344,16 @@ def note_content(item, overrides=None):
     exact_time = status_dt.strftime("%Y-%m-%d %H:%M:%S %Z") if status_dt else ""
 
     lines = [
+        "---",
+        "tags:",
+        *[f"  - {tag}" for tag in tags],
+        "---",
+        "",
         "## 摘要",
         summary or "- 暂无可提取摘要",
+        "",
+        "## 标签",
+        " ".join(f"#{tag}" for tag in tags),
         "",
         "## 来源",
         f"- 作者：{author} ({handle})",
