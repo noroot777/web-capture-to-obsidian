@@ -3,11 +3,12 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 ![Platform: macOS](https://img.shields.io/badge/platform-macOS-black)
 ![Chrome: 144+](https://img.shields.io/badge/Chrome-144%2B-blue)
-![Codex Skill](https://img.shields.io/badge/Codex-skill-orange)
+![Agent Friendly](https://img.shields.io/badge/agent-friendly-orange)
 
 [中文说明](./README.zh-CN.md)
 
 Sync your X.com bookmarks into Obsidian notes by reusing your real, logged-in Chrome session.
+Use it either as a standalone shell workflow or as a skill/integration inside an agent tool.
 
 ## At a glance
 
@@ -17,7 +18,7 @@ Sync your X.com bookmarks into Obsidian notes by reusing your real, logged-in Ch
 - Keeps stable incremental numbering across repeated syncs
 - Numbers bookmarks by bookmark-list order, from the bottom oldest item upward
 
-This skill is designed for Codex-style agents and local desktop workflows where:
+This project is useful for local desktop workflows where:
 
 - you are already signed in to X in Chrome
 - you want one Obsidian note per bookmark
@@ -64,14 +65,35 @@ X_BOOKMARKS_TARGET_DIR="$HOME/path/to/your/Obsidian/folder"
 
 - macOS
 - Google Chrome
-- Chrome 144+ for the current-session remote-debugging flow used by this skill
+- Chrome 144+ for the current-session remote-debugging flow used by this project
 - Python 3
 - `npm`
-- A working Codex-style environment that can run shell commands
+- Any environment that can run shell commands
 
 `dev-browser` will be installed automatically if it is missing.
 
-## Installation
+## Installation options
+
+You can use this project in three common ways.
+
+### Option 1: Run it as a standalone shell workflow
+
+Clone the repository anywhere you like:
+
+```bash
+git clone https://github.com/noroot777/x-bookmarks-sync.git
+cd x-bookmarks-sync
+```
+
+Then run:
+
+```bash
+./scripts/sync_x_bookmarks.sh
+```
+
+This is the most portable setup and works even if your agent tool has no skill system.
+
+### Option 2: Install it as a Codex skill
 
 Place this folder in your Codex skills directory, for example:
 
@@ -79,24 +101,43 @@ Place this folder in your Codex skills directory, for example:
 ~/.codex/skills/x-bookmarks-sync
 ```
 
-If you are publishing to GitHub and another user wants to install it manually, they can clone or copy this folder into their skills directory.
-
-## Quick start
-
-1. Put this folder in `~/.codex/skills/x-bookmarks-sync`
-2. Copy `x_bookmarks_sync.env.example` to `x_bookmarks_sync.env` if you want a custom output path
-3. Enable remote debugging in your current Chrome session
-4. Make sure you are already signed in to X in Chrome
-5. Ask Codex to `Sync X bookmarks`
-
-## How to use in Codex
-
-Ask with prompts such as:
+Then ask Codex something like:
 
 - `Sync X bookmarks`
 - `Sync my X bookmarks into Obsidian`
-- `Update the X bookmarks skill notes`
-- `Use x-bookmarks-sync to refresh my bookmarks`
+
+### Option 3: Integrate it into other agent tools
+
+If your tool supports custom skills, slash commands, prompt libraries, or shell tasks, point it at:
+
+```text
+scripts/sync_x_bookmarks.sh
+```
+
+Typical patterns:
+
+- register a custom command that runs `./scripts/sync_x_bookmarks.sh`
+- add a reusable prompt/snippet that tells the agent to run that script
+- create a task or automation entry that launches the sync script in this repo
+
+For tools without a formal skill format, using the shell script directly is usually the simplest setup.
+
+## Quick start
+
+1. Clone or copy this repo to your machine
+2. Copy `x_bookmarks_sync.env.example` to `x_bookmarks_sync.env` if you want a custom output path
+3. Enable remote debugging in your current Chrome session
+4. Make sure you are already signed in to X in Chrome
+5. Run `./scripts/sync_x_bookmarks.sh` or call it from your agent tool
+
+## Example prompts for agent tools
+
+If your agent can run shell commands, prompts such as these usually work:
+
+- `Sync X bookmarks`
+- `Sync my X bookmarks into Obsidian`
+- `Refresh my X bookmarks notes`
+- `Run the x-bookmarks-sync script`
 
 ## How it works
 
@@ -120,7 +161,7 @@ chrome://inspect#remote-debugging
 
 3. Enable remote debugging
 
-After that, the skill can attempt to connect to your current Chrome session.
+After that, the script can attempt to connect to your current Chrome session.
 
 ## Permission prompt behavior
 
@@ -135,7 +176,7 @@ If that prompt appears, click `Allow` and run the sync again.
 
 ## Incremental sync behavior
 
-This skill is incremental in result, not purely incremental in transport.
+This workflow is incremental in result, not purely incremental in transport.
 
 What that means:
 
@@ -151,24 +192,30 @@ It also tries to stop early during scrolling:
 
 This makes repeated syncs faster than a full scroll every time.
 
-## Manual shell usage
+## Standalone shell usage
 
-You can also run the sync directly:
+You can run the sync directly without any skill system:
 
 ```bash
-~/.codex/skills/x-bookmarks-sync/scripts/sync_x_bookmarks.sh
+./scripts/sync_x_bookmarks.sh
 ```
 
 Optional local config file:
 
 ```text
-~/.codex/skills/x-bookmarks-sync/x_bookmarks_sync.env
+./x_bookmarks_sync.env
+```
+
+From another directory, you can also run:
+
+```bash
+bash /path/to/x-bookmarks-sync/scripts/sync_x_bookmarks.sh
 ```
 
 ## Files
 
 - `SKILL.md`
-  - the skill trigger and workflow definition
+  - an example skill definition for tools that support skill-style metadata
 - `scripts/sync_x_bookmarks.sh`
   - environment checks, Chrome endpoint discovery, sync entrypoint
 - `scripts/export_x_bookmarks.devbrowser.js`
@@ -178,9 +225,9 @@ Optional local config file:
 
 ## Notes and limitations
 
-- This skill is more reliable than a normal unauthenticated scraper because it uses your real logged-in Chrome session.
+- This project is more reliable than a normal unauthenticated scraper because it uses your real logged-in Chrome session.
 - It is not a universal anti-bot bypass.
-- If X changes page structure, login flow, or anti-automation behavior, this skill may need updates.
+- If X changes page structure, login flow, or anti-automation behavior, this project may need updates.
 - If Chrome is too old, the script exits with a clear version message.
 - If remote debugging is not enabled, the script exits with instructions.
 - The default output path is only a safe example. Use `x_bookmarks_sync.env` for your own machine-specific settings.
@@ -189,7 +236,7 @@ Optional local config file:
 
 If you publish this on GitHub, consider documenting:
 
-- your intended Codex host
+- which agent hosts or tools you tested it with
 - the supported Chrome version range
 - whether the default Obsidian path is only an example or a required convention
 - whether users should commit `.x_bookmarks_state.json`
