@@ -1,6 +1,21 @@
 # X 书签同步
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+![Platform: macOS](https://img.shields.io/badge/platform-macOS-black)
+![Chrome: 144+](https://img.shields.io/badge/Chrome-144%2B-blue)
+![Codex Skill](https://img.shields.io/badge/Codex-skill-orange)
+
+[English README](./README.md)
+
 通过复用你已经登录的 Chrome 会话，把 `X.com` 书签同步成 Obsidian 笔记。
+
+## 一眼看懂
+
+- 借用你当前已经登录的 Chrome 会话，而不是单独处理登录
+- 从 `https://x.com/i/bookmarks` 导出书签
+- 为每条书签生成一篇 Obsidian Markdown 笔记
+- 多次同步时保持稳定递增编号
+- 编号按收藏列表顺序分配，从列表底部最老的书签开始
 
 这个 skill 适合下面这种场景：
 
@@ -62,6 +77,13 @@
 ```
 
 如果你要发布到 GitHub，别人可以把这个目录 clone 或复制到他们自己的 skills 目录中。
+
+## 快速开始
+
+1. 把这个目录放到 `~/.codex/skills/x-bookmarks-sync`
+2. 在你当前使用的 Chrome 会话里开启 remote debugging
+3. 确保你已经在 Chrome 中登录 X
+4. 对 Codex 说 `同步 X 书签`
 
 ## 在 Codex 里怎么触发
 

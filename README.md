@@ -1,6 +1,21 @@
 # X Bookmarks Sync
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+![Platform: macOS](https://img.shields.io/badge/platform-macOS-black)
+![Chrome: 144+](https://img.shields.io/badge/Chrome-144%2B-blue)
+![Codex Skill](https://img.shields.io/badge/Codex-skill-orange)
+
+[中文说明](./README.zh-CN.md)
+
 Sync your X.com bookmarks into Obsidian notes by reusing your real, logged-in Chrome session.
+
+## At a glance
+
+- Uses your existing authenticated Chrome session instead of a separate scraper login
+- Exports bookmarks from `https://x.com/i/bookmarks`
+- Generates one Markdown note per bookmark in Obsidian
+- Keeps stable incremental numbering across repeated syncs
+- Numbers bookmarks by bookmark-list order, from the bottom oldest item upward
 
 This skill is designed for Codex-style agents and local desktop workflows where:
 
@@ -62,6 +77,13 @@ Place this folder in your Codex skills directory, for example:
 ```
 
 If you are publishing to GitHub and another user wants to install it manually, they can clone or copy this folder into their skills directory.
+
+## Quick start
+
+1. Put this folder in `~/.codex/skills/x-bookmarks-sync`
+2. Enable remote debugging in your current Chrome session
+3. Make sure you are already signed in to X in Chrome
+4. Ask Codex to `Sync X bookmarks`
 
 ## How to use in Codex
 
