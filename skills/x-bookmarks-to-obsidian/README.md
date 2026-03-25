@@ -2,48 +2,35 @@
 
 **English** | [中文](#中文)
 
-Sync your full X bookmark list into Obsidian notes, using your real logged-in Chrome session.
+Sync your full X bookmark list into Obsidian notes, with incremental updates. Uses your real logged-in Chrome session.
 
 Part of [web-capture-to-obsidian](../../). For capturing regular URLs, see [url-to-obsidian](../url-to-obsidian/).
 
-## Setup
+## Install
 
-```bash
-cp x_bookmarks_to_obsidian.env.example x_bookmarks_to_obsidian.env
-```
+Tell your AI agent:
 
-Set your Obsidian path (must be absolute):
+> Install the x-bookmarks-to-obsidian skill from GitHub repo noroot777/web-capture-to-obsidian, path skills/x-bookmarks-to-obsidian
 
-```
-X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR="/Users/you/Obsidian/X Bookmarks"
-```
+For OpenCode, ask the agent to clone the whole repo into its skills directory.
 
-Make sure Chrome remote debugging is on: `chrome://inspect#remote-debugging`.
+## First-time setup
+
+Tell your agent where your Obsidian vault is. The agent will create the env file automatically:
+
+> Set up the x-bookmarks-to-obsidian skill. My Obsidian vault is at /Users/me/Obsidian/X Bookmarks
+
+Prerequisites: macOS, Chrome 144+, Python 3, npm. Chrome remote debugging must be turned on once: `chrome://inspect#remote-debugging`.
 
 ## Usage
 
-```bash
-./scripts/x_bookmarks_to_obsidian.sh
-```
+Talk to your agent in natural language:
 
-It opens `https://x.com/i/bookmarks` in your Chrome, scrolls through the feed, and exports everything.
+> Sync my X bookmarks to Obsidian
 
-## Agent workflow
+> Refresh my X bookmark notes
 
-When running inside an AI agent (Codex, Claude Code, etc.), let the agent handle title/summary/tag generation:
-
-```bash
-# 1. Export only
-X_BOOKMARKS_TO_OBSIDIAN_SKIP_GENERATE=1 ./scripts/x_bookmarks_to_obsidian.sh
-
-# 2. Agent reads ~/.dev-browser/tmp/x-bookmarks-to-obsidian-export.json
-# 3. Agent writes overrides to ~/.dev-browser/tmp/x-bookmarks-to-obsidian-llm-overrides.json
-
-# 4. Generate notes
-python3 scripts/generate_x_bookmarks_obsidian_notes.py
-```
-
-Override format: [`x_bookmarks_to_obsidian_llm_overrides.example.json`](x_bookmarks_to_obsidian_llm_overrides.example.json)
+The agent opens your X bookmarks page in Chrome, scrolls through the full list, exports everything, generates titles/summaries/tags, and writes the notes — all automatically.
 
 ## Output
 
@@ -61,7 +48,7 @@ All optional. See [`x_bookmarks_to_obsidian.env.example`](x_bookmarks_to_obsidia
 
 | | |
 |---|---|
-| `SKILL.md` | Skill definition for AI clients |
+| `SKILL.md` | Skill definition — the agent reads this to know what to do |
 | `scripts/x_bookmarks_to_obsidian.sh` | Main entry point |
 | `scripts/export_x_bookmarks.devbrowser.js` | Chrome automation — scrolls and exports bookmarks |
 | `scripts/generate_x_bookmarks_obsidian_notes.py` | JSON → Obsidian notes |
@@ -75,48 +62,35 @@ All optional. See [`x_bookmarks_to_obsidian.env.example`](x_bookmarks_to_obsidia
 
 [English](#x-bookmarks-to-obsidian) | **中文**
 
-把你的 X 书签完整同步到 Obsidian 笔记，用的是你已经登录好的 Chrome。
+把你的 X 书签完整同步到 Obsidian 笔记，支持增量更新。用的是你已经登录好的 Chrome。
 
 属于 [web-capture-to-obsidian](../../) 仓库。抓普通 URL 用 [url-to-obsidian](../url-to-obsidian/)。
 
-## 配置
+## 安装
 
-```bash
-cp x_bookmarks_to_obsidian.env.example x_bookmarks_to_obsidian.env
-```
+告诉你的 AI agent：
 
-填 Obsidian 目录（必须绝对路径）：
+> 从 GitHub 仓库 noroot777/web-capture-to-obsidian 安装 x-bookmarks-to-obsidian skill，路径 skills/x-bookmarks-to-obsidian
 
-```
-X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR="/Users/你的用户名/Obsidian/X Bookmarks"
-```
+OpenCode 的话，让 agent 把整个仓库 clone 到 skills 目录。
 
-Chrome 远程调试要先开：`chrome://inspect#remote-debugging`。
+## 首次配置
 
-## 用法
+告诉 agent 你的 Obsidian 笔记目录，agent 会自动创建 env 文件：
 
-```bash
-./scripts/x_bookmarks_to_obsidian.sh
-```
+> 配置 x-bookmarks-to-obsidian skill，我的 Obsidian 目录是 /Users/我/Obsidian/X Bookmarks
 
-它会在你的 Chrome 里打开 `https://x.com/i/bookmarks`，滚动整个列表，导出全部书签。
+环境要求：macOS、Chrome 144+、Python 3、npm。Chrome 远程调试要先开一次：`chrome://inspect#remote-debugging`。
 
-## Agent 工作流
+## 使用
 
-在 AI agent（Codex、Claude Code 等）里用的话，让 agent 生成标题/摘要/标签：
+用自然语言跟 agent 说就行：
 
-```bash
-# 1. 只导出
-X_BOOKMARKS_TO_OBSIDIAN_SKIP_GENERATE=1 ./scripts/x_bookmarks_to_obsidian.sh
+> 把我的 X 书签同步到 Obsidian
 
-# 2. Agent 读 ~/.dev-browser/tmp/x-bookmarks-to-obsidian-export.json
-# 3. Agent 写 overrides 到 ~/.dev-browser/tmp/x-bookmarks-to-obsidian-llm-overrides.json
+> 刷新一下我的 X 书签笔记
 
-# 4. 生成笔记
-python3 scripts/generate_x_bookmarks_obsidian_notes.py
-```
-
-overrides 格式：[`x_bookmarks_to_obsidian_llm_overrides.example.json`](x_bookmarks_to_obsidian_llm_overrides.example.json)
+agent 会自动打开你的 X 书签页面，滚动整个列表，导出全部内容，生成标题/摘要/标签，写好笔记——全自动。
 
 ## 输出
 
@@ -134,7 +108,7 @@ overrides 格式：[`x_bookmarks_to_obsidian_llm_overrides.example.json`](x_book
 
 | | |
 |---|---|
-| `SKILL.md` | 给 AI 客户端的 skill 定义 |
+| `SKILL.md` | Skill 定义——agent 读这个来知道该怎么做 |
 | `scripts/x_bookmarks_to_obsidian.sh` | 入口脚本 |
 | `scripts/export_x_bookmarks.devbrowser.js` | Chrome 自动化——滚动并导出书签 |
 | `scripts/generate_x_bookmarks_obsidian_notes.py` | JSON → Obsidian 笔记 |

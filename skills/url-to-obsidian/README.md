@@ -6,56 +6,33 @@ Grab one or more URLs from your Chrome session and turn them into Obsidian notes
 
 Part of [web-capture-to-obsidian](../../). For X bookmark sync, see [x-bookmarks-to-obsidian](../x-bookmarks-to-obsidian/).
 
-## Setup
+## Install
 
-```bash
-cp url_to_obsidian.env.example url_to_obsidian.env
-```
+Tell your AI agent:
 
-Set your Obsidian path (must be absolute):
+> Install the url-to-obsidian skill from GitHub repo noroot777/web-capture-to-obsidian, path skills/url-to-obsidian
 
-```
-URL_TO_OBSIDIAN_TARGET_DIR="/Users/you/Obsidian/URL Capture"
-```
+For OpenCode, ask the agent to clone the whole repo into its skills directory.
 
-Make sure Chrome remote debugging is on: `chrome://inspect#remote-debugging`.
+## First-time setup
+
+Tell your agent where your Obsidian vault is. The agent will create the env file automatically:
+
+> Set up the url-to-obsidian skill. My Obsidian vault is at /Users/me/Obsidian/URL Capture
+
+Prerequisites: macOS, Chrome 144+, Python 3, npm. Chrome remote debugging must be turned on once: `chrome://inspect#remote-debugging`.
 
 ## Usage
 
-**Capture a page:**
+Talk to your agent in natural language:
 
-```bash
-./scripts/url_to_obsidian.sh "https://github.com/openai/openai-python"
-```
+> Save this page to Obsidian: https://github.com/openai/openai-python
 
-**Multiple URLs at once:**
+> Capture these URLs: https://mp.weixin.qq.com/s/abc and https://x.com/user/status/123
 
-```bash
-./scripts/url_to_obsidian.sh "https://mp.weixin.qq.com/s/abc and https://x.com/user/status/123"
-```
+> Save whatever's on my clipboard to Obsidian
 
-**From clipboard:**
-
-```bash
-pbpaste | ./scripts/url_to_obsidian.sh
-```
-
-## Agent workflow
-
-When running inside an AI agent (Codex, Claude Code, etc.), let the agent handle title/summary/tag generation:
-
-```bash
-# 1. Export only
-URL_TO_OBSIDIAN_SKIP_GENERATE=1 ./scripts/url_to_obsidian.sh "https://..."
-
-# 2. Agent reads ~/.dev-browser/tmp/url-to-obsidian-export.json
-# 3. Agent writes overrides to ~/.dev-browser/tmp/url-to-obsidian-llm-overrides.json
-
-# 4. Generate notes
-python3 scripts/generate_url_obsidian_notes.py
-```
-
-Override format: [`url_to_obsidian_llm_overrides.example.json`](url_to_obsidian_llm_overrides.example.json)
+The agent exports the pages from Chrome, generates titles/summaries/tags via LLM, and writes Obsidian notes — all in one step.
 
 ## Output
 
@@ -73,7 +50,7 @@ All optional. See [`url_to_obsidian.env.example`](url_to_obsidian.env.example) f
 
 | | |
 |---|---|
-| `SKILL.md` | Skill definition for AI clients |
+| `SKILL.md` | Skill definition — the agent reads this to know what to do |
 | `scripts/url_to_obsidian.sh` | Main entry point |
 | `scripts/export_urls.devbrowser.js` | Chrome automation |
 | `scripts/extract_input_urls.py` | URL extraction from text |
@@ -92,56 +69,33 @@ All optional. See [`url_to_obsidian.env.example`](url_to_obsidian.env.example) f
 
 属于 [web-capture-to-obsidian](../../) 仓库。X 书签同步看 [x-bookmarks-to-obsidian](../x-bookmarks-to-obsidian/)。
 
-## 配置
+## 安装
 
-```bash
-cp url_to_obsidian.env.example url_to_obsidian.env
-```
+告诉你的 AI agent：
 
-填 Obsidian 目录（必须绝对路径）：
+> 从 GitHub 仓库 noroot777/web-capture-to-obsidian 安装 url-to-obsidian skill，路径 skills/url-to-obsidian
 
-```
-URL_TO_OBSIDIAN_TARGET_DIR="/Users/你的用户名/Obsidian/URL Capture"
-```
+OpenCode 的话，让 agent 把整个仓库 clone 到 skills 目录。
 
-Chrome 远程调试要先开：`chrome://inspect#remote-debugging`。
+## 首次配置
 
-## 用法
+告诉 agent 你的 Obsidian 笔记目录，agent 会自动创建 env 文件：
 
-**抓一个页面：**
+> 配置 url-to-obsidian skill，我的 Obsidian 目录是 /Users/我/Obsidian/URL Capture
 
-```bash
-./scripts/url_to_obsidian.sh "https://github.com/openai/openai-python"
-```
+环境要求：macOS、Chrome 144+、Python 3、npm。Chrome 远程调试要先开一次：`chrome://inspect#remote-debugging`。
 
-**一次抓多个：**
+## 使用
 
-```bash
-./scripts/url_to_obsidian.sh "https://mp.weixin.qq.com/s/abc 还有 https://x.com/user/status/123"
-```
+用自然语言跟 agent 说就行：
 
-**从剪贴板读：**
+> 把这个页面存到 Obsidian：https://github.com/openai/openai-python
 
-```bash
-pbpaste | ./scripts/url_to_obsidian.sh
-```
+> 抓这些 URL：https://mp.weixin.qq.com/s/abc 和 https://x.com/user/status/123
 
-## Agent 工作流
+> 把我剪贴板里的链接存到 Obsidian
 
-在 AI agent（Codex、Claude Code 等）里用的话，让 agent 生成标题/摘要/标签：
-
-```bash
-# 1. 只导出
-URL_TO_OBSIDIAN_SKIP_GENERATE=1 ./scripts/url_to_obsidian.sh "https://..."
-
-# 2. Agent 读 ~/.dev-browser/tmp/url-to-obsidian-export.json
-# 3. Agent 写 overrides 到 ~/.dev-browser/tmp/url-to-obsidian-llm-overrides.json
-
-# 4. 生成笔记
-python3 scripts/generate_url_obsidian_notes.py
-```
-
-overrides 格式：[`url_to_obsidian_llm_overrides.example.json`](url_to_obsidian_llm_overrides.example.json)
+agent 会自动从 Chrome 导出页面，通过 LLM 生成标题/摘要/标签，写好 Obsidian 笔记——一步到位。
 
 ## 输出
 
@@ -159,7 +113,7 @@ overrides 格式：[`url_to_obsidian_llm_overrides.example.json`](url_to_obsidia
 
 | | |
 |---|---|
-| `SKILL.md` | 给 AI 客户端的 skill 定义 |
+| `SKILL.md` | Skill 定义——agent 读这个来知道该怎么做 |
 | `scripts/url_to_obsidian.sh` | 入口脚本 |
 | `scripts/export_urls.devbrowser.js` | Chrome 自动化 |
 | `scripts/extract_input_urls.py` | 从文本提取 URL |
