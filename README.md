@@ -13,7 +13,7 @@ Works with Codex, Claude Code, OpenCode, and OpenClaw. Connects to your logged-i
 
 ## Prerequisites
 
-macOS, Chrome 144+, Python 3, npm.
+Chrome 144+, Python 3, npm.
 
 One-time Chrome setup: open `chrome://inspect#remote-debugging` and turn it on.
 
@@ -82,7 +82,7 @@ Codex、Claude Code、OpenCode、OpenClaw 都能用。
 
 ## 环境要求
 
-macOS、Chrome 144+、Python 3、npm。
+Chrome 144+、Python 3、npm。
 
 Chrome 只要设置一次：打开 `chrome://inspect#remote-debugging`，开启远程调试。
 

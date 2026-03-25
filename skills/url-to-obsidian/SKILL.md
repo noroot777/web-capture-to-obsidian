@@ -18,7 +18,7 @@ Before running the skill, create `url_to_obsidian.env` from `url_to_obsidian.env
 ### Agent-assisted mode
 
 1. Run export-only capture:
-   - `URL_TO_OBSIDIAN_SKIP_GENERATE=1 ./scripts/url_to_obsidian.sh "<user input>"`
+   - `URL_TO_OBSIDIAN_SKIP_GENERATE=1 python3 scripts/url_to_obsidian.py "<user input>"`
 2. Read the exported JSON from:
    - `URL_TO_OBSIDIAN_SOURCE_JSON`
    - default: `~/.dev-browser/tmp/url-to-obsidian-export.json`
@@ -33,7 +33,7 @@ Before running the skill, create `url_to_obsidian.env` from `url_to_obsidian.env
 
 ### Standalone shell mode
 
-- `./scripts/url_to_obsidian.sh "<user input>"`
+- `python3 scripts/url_to_obsidian.py "<user input>"`
 
 If LLM participation is enabled, this requires the local `codex` CLI.
 
@@ -56,4 +56,3 @@ If LLM participation is enabled, this requires the local `codex` CLI.
 - One note per captured URL under `URL_TO_OBSIDIAN_TARGET_DIR`
 - `000 - URL 采集索引.md`
 - `.url_to_obsidian_state.json`
-

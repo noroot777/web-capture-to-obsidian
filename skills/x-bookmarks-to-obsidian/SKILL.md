@@ -18,7 +18,7 @@ Before running the skill, create `x_bookmarks_to_obsidian.env` from `x_bookmarks
 ### Agent-assisted mode
 
 1. Run export-only sync:
-   - `X_BOOKMARKS_TO_OBSIDIAN_SKIP_GENERATE=1 ./scripts/x_bookmarks_to_obsidian.sh`
+   - `X_BOOKMARKS_TO_OBSIDIAN_SKIP_GENERATE=1 python3 scripts/x_bookmarks_to_obsidian.py`
 2. Read the exported JSON from:
    - `X_BOOKMARKS_TO_OBSIDIAN_SOURCE_JSON`
    - default: `~/.dev-browser/tmp/x-bookmarks-to-obsidian-export.json`
@@ -33,7 +33,7 @@ Before running the skill, create `x_bookmarks_to_obsidian.env` from `x_bookmarks
 
 ### Standalone shell mode
 
-- `./scripts/x_bookmarks_to_obsidian.sh`
+- `python3 scripts/x_bookmarks_to_obsidian.py`
 
 If LLM participation is enabled, this requires the local `codex` CLI.
 
@@ -42,4 +42,3 @@ If LLM participation is enabled, this requires the local `codex` CLI.
 - One note per bookmark under `X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR`
 - `000 - X 书签索引.md`
 - `.x_bookmarks_to_obsidian_state.json`
-
