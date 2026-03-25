@@ -11,7 +11,7 @@ def env_path(name: str, default: str) -> Path:
 
 
 def local_timezone():
-    configured = os.environ.get("X_BOOKMARKS_TIMEZONE", "").strip()
+    configured = os.environ.get("X_BOOKMARKS_TO_OBSIDIAN_TIMEZONE", "").strip()
     if configured:
         try:
             return ZoneInfo(configured)
@@ -20,12 +20,12 @@ def local_timezone():
     return datetime.now().astimezone().tzinfo or timezone.utc
 
 
-SOURCE_JSON = env_path("X_BOOKMARKS_SOURCE_JSON", "~/.dev-browser/tmp/x-bookmarks-export.json")
-TARGET_DIR = env_path("X_BOOKMARKS_TARGET_DIR", "~/Obsidian/X Bookmarks")
+SOURCE_JSON = env_path("X_BOOKMARKS_TO_OBSIDIAN_SOURCE_JSON", "~/.dev-browser/tmp/x-bookmarks-to-obsidian-export.json")
+TARGET_DIR = env_path("X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR", "~/Obsidian/X Bookmarks to Obsidian")
 INDEX_FILE = TARGET_DIR / "000 - X 书签索引.md"
-STATE_FILE = env_path("X_BOOKMARKS_STATE_FILE", str(TARGET_DIR / ".x_bookmarks_state.json"))
-LLM_OVERRIDES_FILE = env_path("X_BOOKMARKS_LLM_OVERRIDES_FILE", "~/.dev-browser/tmp/x-bookmarks-llm-overrides.json")
-STATE_SEQUENCE_MODE = "bookmark-list-order-v1"
+STATE_FILE = env_path("X_BOOKMARKS_TO_OBSIDIAN_STATE_FILE", str(TARGET_DIR / ".x_bookmarks_to_obsidian_state.json"))
+LLM_OVERRIDES_FILE = env_path("X_BOOKMARKS_TO_OBSIDIAN_LLM_OVERRIDES_FILE", "~/.dev-browser/tmp/x-bookmarks-to-obsidian-llm-overrides.json")
+STATE_SEQUENCE_MODE = "x-bookmarks-to-obsidian-v1"
 LOCAL_TZ = local_timezone()
 TWITTER_EPOCH_MS = 1288834974657
 
@@ -236,7 +236,7 @@ def derive_tags(item, title, summary, overrides=None):
         ]
     ).lower()
 
-    tags = ["x-bookmarks"]
+    tags = ["x-bookmarks-to-obsidian"]
     for keywords, tag in TAG_RULES:
         if any(keyword.lower() in text for keyword in keywords):
             tags.append(tag)

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CONFIG_FILE="${X_BOOKMARKS_CONFIG_FILE:-$SKILL_DIR/x_bookmarks_sync.env}"
+CONFIG_FILE="${X_BOOKMARKS_TO_OBSIDIAN_CONFIG_FILE:-$SKILL_DIR/x_bookmarks_to_obsidian.env}"
 
 if [[ -f "$CONFIG_FILE" ]]; then
   set -a
@@ -12,31 +12,30 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 
 TARGET_DIR_CONFIGURED=0
-if [[ -n "${X_BOOKMARKS_TARGET_DIR:-}" ]]; then
+if [[ -n "${X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR:-}" ]]; then
   TARGET_DIR_CONFIGURED=1
 fi
 
-DEVTOOLS_FILE="${X_BOOKMARKS_DEVTOOLS_FILE:-$HOME/Library/Application Support/Google/Chrome/DevToolsActivePort}"
+DEVTOOLS_FILE="${X_BOOKMARKS_TO_OBSIDIAN_DEVTOOLS_FILE:-$HOME/Library/Application Support/Google/Chrome/DevToolsActivePort}"
 EXPORT_SCRIPT="$SKILL_DIR/scripts/export_x_bookmarks.devbrowser.js"
-GENERATE_SCRIPT="$SKILL_DIR/scripts/generate_x_obsidian_notes.py"
-LLM_SCRIPT="$SKILL_DIR/scripts/generate_x_llm_overrides.py"
-TARGET_DIR="${X_BOOKMARKS_TARGET_DIR:-$HOME/Obsidian/X Bookmarks}"
-STATE_FILE="${X_BOOKMARKS_STATE_FILE:-$TARGET_DIR/.x_bookmarks_state.json}"
-DEV_BROWSER_TMP="${X_BOOKMARKS_DEV_BROWSER_TMP:-$HOME/.dev-browser/tmp}"
-KNOWN_LINKS_FILE="${X_BOOKMARKS_KNOWN_LINKS_FILE:-$DEV_BROWSER_TMP/x-bookmarks-known.json}"
-CHROME_BIN="${X_BOOKMARKS_CHROME_BIN:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
-MIN_SUPPORTED_CHROME_MAJOR="${X_BOOKMARKS_MIN_CHROME_MAJOR:-144}"
-SOURCE_JSON="${X_BOOKMARKS_SOURCE_JSON:-$DEV_BROWSER_TMP/x-bookmarks-export.json}"
-LLM_OVERRIDES_FILE="${X_BOOKMARKS_LLM_OVERRIDES_FILE:-$DEV_BROWSER_TMP/x-bookmarks-llm-overrides.json}"
-USE_LLM="${X_BOOKMARKS_USE_LLM:-1}"
-SKIP_EXPORT="${X_BOOKMARKS_SKIP_EXPORT:-0}"
-SKIP_GENERATE="${X_BOOKMARKS_SKIP_GENERATE:-0}"
-DEFAULT_TARGET_DIR="$HOME/Obsidian/X Bookmarks"
+GENERATE_SCRIPT="$SKILL_DIR/scripts/generate_x_bookmarks_obsidian_notes.py"
+LLM_SCRIPT="$SKILL_DIR/scripts/generate_x_bookmarks_llm_overrides.py"
+TARGET_DIR="${X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR:-$HOME/Obsidian/X Bookmarks to Obsidian}"
+STATE_FILE="${X_BOOKMARKS_TO_OBSIDIAN_STATE_FILE:-$TARGET_DIR/.x_bookmarks_to_obsidian_state.json}"
+DEV_BROWSER_TMP="${X_BOOKMARKS_TO_OBSIDIAN_DEV_BROWSER_TMP:-$HOME/.dev-browser/tmp}"
+KNOWN_LINKS_FILE="${X_BOOKMARKS_TO_OBSIDIAN_KNOWN_LINKS_FILE:-$DEV_BROWSER_TMP/x-bookmarks-to-obsidian-known.json}"
+CHROME_BIN="${X_BOOKMARKS_TO_OBSIDIAN_CHROME_BIN:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
+MIN_SUPPORTED_CHROME_MAJOR="${X_BOOKMARKS_TO_OBSIDIAN_MIN_CHROME_MAJOR:-144}"
+SOURCE_JSON="${X_BOOKMARKS_TO_OBSIDIAN_SOURCE_JSON:-$DEV_BROWSER_TMP/x-bookmarks-to-obsidian-export.json}"
+LLM_OVERRIDES_FILE="${X_BOOKMARKS_TO_OBSIDIAN_LLM_OVERRIDES_FILE:-$DEV_BROWSER_TMP/x-bookmarks-to-obsidian-llm-overrides.json}"
+USE_LLM="${X_BOOKMARKS_TO_OBSIDIAN_USE_LLM:-1}"
+SKIP_EXPORT="${X_BOOKMARKS_TO_OBSIDIAN_SKIP_EXPORT:-0}"
+SKIP_GENERATE="${X_BOOKMARKS_TO_OBSIDIAN_SKIP_GENERATE:-0}"
 
-export X_BOOKMARKS_TARGET_DIR="$TARGET_DIR"
-export X_BOOKMARKS_STATE_FILE="$STATE_FILE"
-export X_BOOKMARKS_SOURCE_JSON="$SOURCE_JSON"
-export X_BOOKMARKS_LLM_OVERRIDES_FILE="$LLM_OVERRIDES_FILE"
+export X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR="$TARGET_DIR"
+export X_BOOKMARKS_TO_OBSIDIAN_STATE_FILE="$STATE_FILE"
+export X_BOOKMARKS_TO_OBSIDIAN_SOURCE_JSON="$SOURCE_JSON"
+export X_BOOKMARKS_TO_OBSIDIAN_LLM_OVERRIDES_FILE="$LLM_OVERRIDES_FILE"
 
 ensure_target_dir_configured() {
   if [[ "$TARGET_DIR_CONFIGURED" == "1" ]]; then
@@ -44,14 +43,14 @@ ensure_target_dir_configured() {
   fi
 
   echo "First-time setup required before syncing X bookmarks." >&2
-  echo "Create x_bookmarks_sync.env from x_bookmarks_sync.env.example and set X_BOOKMARKS_TARGET_DIR to your Obsidian notes folder using an absolute path." >&2
+  echo "Create x_bookmarks_to_obsidian.env from x_bookmarks_to_obsidian.env.example and set X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR to your Obsidian notes folder using an absolute path." >&2
   exit 1
 }
 
 ensure_absolute_target_dir() {
   if [[ "$TARGET_DIR" != /* ]]; then
-    echo "X_BOOKMARKS_TARGET_DIR must be an absolute path. Current value: $TARGET_DIR" >&2
-    echo "Update x_bookmarks_sync.env and set X_BOOKMARKS_TARGET_DIR to an absolute path like /Users/you/obsidian/X Bookmarks." >&2
+    echo "X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR must be an absolute path. Current value: $TARGET_DIR" >&2
+    echo "Update x_bookmarks_to_obsidian.env and set X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR to an absolute path like /Users/you/Obsidian/X Bookmarks." >&2
     exit 1
   fi
 }
@@ -76,7 +75,7 @@ ensure_codex() {
   fi
 
   echo "Standalone shell automation with LLM participation is enabled, but the codex CLI is not available." >&2
-  echo "Install Codex first, or run with X_BOOKMARKS_USE_LLM=0 to skip LLM-generated titles, summaries, and tags." >&2
+  echo "Install Codex first, or run with X_BOOKMARKS_TO_OBSIDIAN_USE_LLM=0 to skip LLM-generated titles, summaries, and tags." >&2
   exit 1
 }
 
@@ -131,7 +130,7 @@ import json
 import os
 from pathlib import Path
 
-state = Path(os.environ["X_BOOKMARKS_STATE_FILE"]).expanduser()
+state = Path(os.environ["X_BOOKMARKS_TO_OBSIDIAN_STATE_FILE"]).expanduser()
 try:
     data = json.loads(state.read_text(encoding="utf-8"))
     entries = data.get("entries", {})

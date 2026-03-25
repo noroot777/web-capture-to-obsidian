@@ -1,8 +1,8 @@
-const page = await browser.getPage("x-bookmarks-export");
+const page = await browser.getPage("x-bookmarks-to-obsidian-export");
 let knownLinks = new Set();
 
 try {
-  const knownRaw = await readFile("x-bookmarks-known.json");
+  const knownRaw = await readFile("x-bookmarks-to-obsidian-known.json");
   const parsed = JSON.parse(knownRaw);
   if (Array.isArray(parsed)) {
     knownLinks = new Set(parsed.filter((item) => typeof item === "string" && item.length > 0));
@@ -89,7 +89,7 @@ for (let step = 0; step < 500; step += 1) {
 }
 
 const items = Array.from(collected.values());
-const savedPath = await writeFile("x-bookmarks-export.json", JSON.stringify(items, null, 2));
+const savedPath = await writeFile("x-bookmarks-to-obsidian-export.json", JSON.stringify(items, null, 2));
 
 console.log(
   JSON.stringify(

@@ -39,15 +39,15 @@ function uniqueStrings(values, limit = 20) {
   return result;
 }
 
-const page = await browser.getPage("web-capture-to-obsidian-export");
+const page = await browser.getPage("url-to-obsidian-export");
 
 let requestedUrls = [];
 try {
   let raw = "";
   try {
-    raw = await readFile("web-capture-to-obsidian-urls.json");
+    raw = await readFile("url-to-obsidian-urls.json");
   } catch {
-    raw = await readFile("knowledge-organizer-urls.json");
+    raw = "";
   }
   const parsed = JSON.parse(raw);
   if (Array.isArray(parsed)) {
@@ -56,7 +56,7 @@ try {
 } catch {}
 
 if (requestedUrls.length === 0) {
-  throw new Error("No URLs found in web-capture-to-obsidian-urls.json");
+  throw new Error("No URLs found in url-to-obsidian-urls.json");
 }
 
 const items = [];
@@ -173,7 +173,7 @@ for (const requestedUrl of requestedUrls) {
   }
 }
 
-const savedPath = await writeFile("web-capture-to-obsidian-export.json", JSON.stringify(items, null, 2));
+const savedPath = await writeFile("url-to-obsidian-export.json", JSON.stringify(items, null, 2));
 console.log(
   JSON.stringify(
     {

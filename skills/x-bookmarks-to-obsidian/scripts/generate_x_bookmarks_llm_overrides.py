@@ -13,34 +13,13 @@ def env_path(name: str, default: str) -> Path:
     return Path(os.environ.get(name, default)).expanduser()
 
 
-def first_env(*names: str, default: str) -> str:
-    for name in names:
-        value = os.environ.get(name)
-        if value:
-            return value
-    return default
-
-
 REPO_DIR = Path(__file__).resolve().parents[1]
-SOURCE_JSON = Path(
-    first_env(
-        "WEB_CAPTURE_TO_OBSIDIAN_SOURCE_JSON",
-        "KNOWLEDGE_ORGANIZER_SOURCE_JSON",
-        default="~/.dev-browser/tmp/web-capture-to-obsidian-export.json",
-    )
-).expanduser()
-LEGACY_SOURCE_JSON = Path("~/.dev-browser/tmp/knowledge-organizer-export.json").expanduser()
-OVERRIDES_FILE = Path(
-    first_env(
-        "WEB_CAPTURE_TO_OBSIDIAN_LLM_OVERRIDES_FILE",
-        "KNOWLEDGE_ORGANIZER_LLM_OVERRIDES_FILE",
-        default="~/.dev-browser/tmp/web-capture-to-obsidian-llm-overrides.json",
-    )
-).expanduser()
-MODEL = first_env("WEB_CAPTURE_TO_OBSIDIAN_LLM_MODEL", "KNOWLEDGE_ORGANIZER_LLM_MODEL", default="gpt-5.4").strip() or "gpt-5.4"
-BATCH_SIZE = max(1, int(first_env("WEB_CAPTURE_TO_OBSIDIAN_LLM_BATCH_SIZE", "KNOWLEDGE_ORGANIZER_LLM_BATCH_SIZE", default="8")))
-RETRIES = max(0, int(first_env("WEB_CAPTURE_TO_OBSIDIAN_LLM_RETRIES", "KNOWLEDGE_ORGANIZER_LLM_RETRIES", default="2")))
-RESUME = first_env("WEB_CAPTURE_TO_OBSIDIAN_LLM_RESUME", "KNOWLEDGE_ORGANIZER_LLM_RESUME", default="1") == "1"
+SOURCE_JSON = env_path("X_BOOKMARKS_TO_OBSIDIAN_SOURCE_JSON", "~/.dev-browser/tmp/x-bookmarks-to-obsidian-export.json")
+OVERRIDES_FILE = env_path("X_BOOKMARKS_TO_OBSIDIAN_LLM_OVERRIDES_FILE", "~/.dev-browser/tmp/x-bookmarks-to-obsidian-llm-overrides.json")
+MODEL = os.environ.get("X_BOOKMARKS_TO_OBSIDIAN_LLM_MODEL", "gpt-5.4").strip() or "gpt-5.4"
+BATCH_SIZE = max(1, int(os.environ.get("X_BOOKMARKS_TO_OBSIDIAN_LLM_BATCH_SIZE", "12")))
+RETRIES = max(0, int(os.environ.get("X_BOOKMARKS_TO_OBSIDIAN_LLM_RETRIES", "2")))
+RESUME = os.environ.get("X_BOOKMARKS_TO_OBSIDIAN_LLM_RESUME", "1") == "1"
 
 SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -75,47 +54,52 @@ SCHEMA = {
     },
 }
 
-PROMPT_PREFIX = """You are organizing saved links into Obsidian notes.
-The input items may come from WeChat articles, GitHub pages, X posts, or general web pages.
-For each item, produce a better title, summary, and tags.
+PROMPT_PREFIX = """You are organizing X bookmarks into Obsidian notes.
+For each bookmark JSON entry, produce a higher-signal title, summary, and tags.
 
 Requirements:
 1. Return one output item for every input item, preserving the exact key.
-2. Title must be concise Chinese, filename-friendly, and should highlight the core idea, project, article, or discussion.
-3. Summary must contain 2 to 4 Chinese bullet-style sentences with concrete signal, not boilerplate.
-4. Tags must contain 2 to 6 lowercase short labels in English or pinyin kebab-case.
-5. Make the source type useful when relevant, but do not redundantly repeat brand names in every title.
-6. Do not invent facts. If the page is thin, summarize conservatively.
-7. When the page is a tool, repo, tutorial, or workflow, make the practical value explicit.
+2. Title must be concise Chinese, filename-friendly, and should not include author, time, or metrics.
+3. Prefer the core project, tool, article, or claim over mechanically copying the first visible line.
+4. Summary must contain 2 to 4 Chinese bullet-style sentences with concrete signal, not filler.
+5. Tags must contain 2 to 6 lowercase short labels in English or pinyin kebab-case.
+6. Do not invent facts. If information is thin, summarize conservatively.
+7. When a post recommends a tool, project, article, tutorial, or workflow, make the practical value explicit.
 8. Output must strictly match the schema.
 
-Input item JSON list:
+Input bookmark JSON list:
 """
 
 
 def compact_item(item: dict) -> dict:
+    links = []
+    for link in item.get("links") or []:
+        if link.endswith("/analytics"):
+            continue
+        if link not in links:
+            links.append(link)
+
+    lines = []
+    for line in item.get("lines") or []:
+        text = " ".join(str(line).split())
+        if text:
+            lines.append(text)
+
     return {
-        "key": item.get("key") or item.get("finalUrl") or item.get("requestedUrl", ""),
-        "source_type": item.get("sourceType", "web"),
-        "requested_url": item.get("requestedUrl", ""),
-        "final_url": item.get("finalUrl", ""),
-        "title": item.get("title", ""),
-        "meta_title": item.get("metaTitle", ""),
-        "meta_description": item.get("metaDescription", ""),
-        "site_name": item.get("siteName", ""),
-        "published_time": item.get("publishedTime", ""),
-        "headings": item.get("headings") or [],
-        "excerpt": item.get("excerpt", ""),
-        "links": item.get("links") or [],
-        "error": item.get("error", ""),
+        "key": item.get("key") or item.get("statusLink", ""),
+        "author": item.get("author", ""),
+        "handle": item.get("handle", ""),
+        "time": item.get("time", ""),
+        "text": item.get("text", ""),
+        "lines": lines,
+        "links": links,
     }
 
 
 def load_items() -> list[dict]:
-    source_file = SOURCE_JSON if SOURCE_JSON.exists() else LEGACY_SOURCE_JSON
-    data = json.loads(source_file.read_text(encoding="utf-8"))
+    data = json.loads(SOURCE_JSON.read_text(encoding="utf-8"))
     if not isinstance(data, list):
-        raise RuntimeError(f"Expected a list in {source_file}")
+        raise RuntimeError(f"Expected a list in {SOURCE_JSON}")
     return data
 
 
@@ -137,7 +121,7 @@ def run_batch(batch_items: list[dict], batch_index: int, total_batches: int, tmp
 
     payload = [compact_item(item) for item in batch_items]
     prompt = PROMPT_PREFIX + json.dumps(payload, ensure_ascii=False)
-    expected_keys = [item.get("key") or item.get("finalUrl") or item.get("requestedUrl", "") for item in batch_items]
+    expected_keys = [item.get("key") or item.get("statusLink", "") for item in batch_items]
 
     cmd = [
         "codex",
@@ -191,21 +175,17 @@ def run_batch(batch_items: list[dict], batch_index: int, total_batches: int, tmp
 
 
 def main() -> int:
-    source_file = SOURCE_JSON if SOURCE_JSON.exists() else LEGACY_SOURCE_JSON
-    if not source_file.exists():
+    if not SOURCE_JSON.exists():
         print(f"Missing source JSON: {SOURCE_JSON}", file=sys.stderr)
         return 1
 
     if shutil.which("codex") is None:
-        print(
-            "codex CLI is required for standalone shell automation when WEB_CAPTURE_TO_OBSIDIAN_USE_LLM=1",
-            file=sys.stderr,
-        )
+        print("codex CLI is required for standalone shell automation when X_BOOKMARKS_TO_OBSIDIAN_USE_LLM=1", file=sys.stderr)
         return 1
 
     items = load_items()
     entries = load_existing_entries()
-    pending = [item for item in items if (item.get("key") or item.get("finalUrl") or item.get("requestedUrl", "")) not in entries]
+    pending = [item for item in items if (item.get("key") or item.get("statusLink", "")) not in entries]
     total = len(items)
     OVERRIDES_FILE.parent.mkdir(parents=True, exist_ok=True)
 
@@ -214,7 +194,7 @@ def main() -> int:
         return 0
 
     total_batches = (len(pending) + BATCH_SIZE - 1) // BATCH_SIZE
-    with tempfile.TemporaryDirectory(prefix="web-capture-to-obsidian-codex-") as raw_tmpdir:
+    with tempfile.TemporaryDirectory(prefix="x-bookmarks-to-obsidian-codex-") as raw_tmpdir:
         tmpdir = Path(raw_tmpdir)
         for batch_index in range(total_batches):
             batch = pending[batch_index * BATCH_SIZE : (batch_index + 1) * BATCH_SIZE]

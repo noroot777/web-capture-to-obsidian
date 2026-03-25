@@ -17,7 +17,7 @@ def env_path(*names: str, default: str) -> Path:
 
 
 def local_timezone():
-    for name in ("WEB_CAPTURE_TO_OBSIDIAN_TIMEZONE", "KNOWLEDGE_ORGANIZER_TIMEZONE", "X_BOOKMARKS_TIMEZONE"):
+    for name in ("URL_TO_OBSIDIAN_TIMEZONE",):
         configured = os.environ.get(name, "").strip()
         if configured:
             try:
@@ -28,30 +28,23 @@ def local_timezone():
 
 
 SOURCE_JSON = env_path(
-    "WEB_CAPTURE_TO_OBSIDIAN_SOURCE_JSON",
-    "KNOWLEDGE_ORGANIZER_SOURCE_JSON",
-    default="~/.dev-browser/tmp/web-capture-to-obsidian-export.json",
+    "URL_TO_OBSIDIAN_SOURCE_JSON",
+    default="~/.dev-browser/tmp/url-to-obsidian-export.json",
 )
-LEGACY_SOURCE_JSON = Path("~/.dev-browser/tmp/knowledge-organizer-export.json").expanduser()
 TARGET_DIR = env_path(
-    "WEB_CAPTURE_TO_OBSIDIAN_TARGET_DIR",
-    "KNOWLEDGE_ORGANIZER_TARGET_DIR",
-    default="~/Obsidian/Web Capture to Obsidian",
+    "URL_TO_OBSIDIAN_TARGET_DIR",
+    default="~/Obsidian/URL to Obsidian",
 )
-INDEX_FILE = TARGET_DIR / "000 - 网页采集索引.md"
+INDEX_FILE = TARGET_DIR / "000 - URL 采集索引.md"
 STATE_FILE = env_path(
-    "WEB_CAPTURE_TO_OBSIDIAN_STATE_FILE",
-    "KNOWLEDGE_ORGANIZER_STATE_FILE",
-    default=str(TARGET_DIR / ".web_capture_to_obsidian_state.json"),
+    "URL_TO_OBSIDIAN_STATE_FILE",
+    default=str(TARGET_DIR / ".url_to_obsidian_state.json"),
 )
-LEGACY_STATE_FILE = TARGET_DIR / ".knowledge_organizer_state.json"
 LLM_OVERRIDES_FILE = env_path(
-    "WEB_CAPTURE_TO_OBSIDIAN_LLM_OVERRIDES_FILE",
-    "KNOWLEDGE_ORGANIZER_LLM_OVERRIDES_FILE",
-    default="~/.dev-browser/tmp/web-capture-to-obsidian-llm-overrides.json",
+    "URL_TO_OBSIDIAN_LLM_OVERRIDES_FILE",
+    default="~/.dev-browser/tmp/url-to-obsidian-llm-overrides.json",
 )
-LEGACY_LLM_OVERRIDES_FILE = Path("~/.dev-browser/tmp/knowledge-organizer-llm-overrides.json").expanduser()
-STATE_SEQUENCE_MODE = "web-capture-to-obsidian-v1"
+STATE_SEQUENCE_MODE = "url-to-obsidian-v1"
 LOCAL_TZ = local_timezone()
 
 TAG_RULES = [
@@ -96,11 +89,10 @@ def load_json(path: Path):
 
 
 def load_llm_overrides():
-    override_file = LLM_OVERRIDES_FILE if LLM_OVERRIDES_FILE.exists() else LEGACY_LLM_OVERRIDES_FILE
-    if not override_file.exists():
+    if not LLM_OVERRIDES_FILE.exists():
         return {}
     try:
-        data = load_json(override_file)
+        data = load_json(LLM_OVERRIDES_FILE)
     except Exception:
         return {}
     if isinstance(data, dict) and isinstance(data.get("entries"), dict):
@@ -250,7 +242,7 @@ def pick_tags(item, title, summary, overrides=None) -> list[str]:
         ]
     ).lower()
 
-    tags = ["web-capture-to-obsidian", source_type(item)]
+    tags = ["url-to-obsidian", source_type(item)]
     host = source_host(item)
     if host:
         site_tag = host.replace("www.", "").replace(".", "-")
@@ -307,7 +299,7 @@ def index_content(ordered_entries, overrides):
     total = len(ordered_entries)
     width = max(3, len(str(total))) if total else 3
     lines = [
-        "# 网页采集索引",
+        "# URL 采集索引",
         "",
         f"- 生成时间：{datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S %Z')}",
         f"- 条目总数：{total}",
@@ -331,11 +323,10 @@ def index_content(ordered_entries, overrides):
 
 
 def load_state():
-    state_file = STATE_FILE if STATE_FILE.exists() else LEGACY_STATE_FILE
-    if not state_file.exists():
+    if not STATE_FILE.exists():
         return {"entries": {}}
     try:
-        state = load_json(state_file)
+        state = load_json(STATE_FILE)
     except Exception:
         return {"entries": {}}
     if not isinstance(state, dict) or not isinstance(state.get("entries"), dict):

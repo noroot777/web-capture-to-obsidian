@@ -1,4 +1,4 @@
 interface:
   display_name: "Web Capture to Obsidian"
-  short_description: "Capture web links and X bookmarks into Obsidian."
-  default_prompt: "Use $web-capture-to-obsidian to capture this link or sync my X bookmarks into Obsidian."
+  short_description: "A skill collection for URL capture and X bookmark sync into Obsidian."
+  default_prompt: "Use $url-to-obsidian to capture this link into Obsidian, or use $x-bookmarks-to-obsidian to sync my X bookmarks."
