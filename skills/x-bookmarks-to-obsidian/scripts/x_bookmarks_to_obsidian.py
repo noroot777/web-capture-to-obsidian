@@ -14,7 +14,6 @@ SKILL_DIR = Path(__file__).resolve().parents[1]
 CONFIG_FILE = Path(os.environ.get("X_BOOKMARKS_TO_OBSIDIAN_CONFIG_FILE", str(SKILL_DIR / "x_bookmarks_to_obsidian.env"))).expanduser()
 EXPORT_SCRIPT = SKILL_DIR / "scripts" / "export_x_bookmarks.devbrowser.js"
 GENERATE_SCRIPT = SKILL_DIR / "scripts" / "generate_x_bookmarks_obsidian_notes.py"
-LLM_SCRIPT = SKILL_DIR / "scripts" / "generate_x_bookmarks_llm_overrides.py"
 MIN_SUPPORTED_CHROME_MAJOR = int(os.environ.get("X_BOOKMARKS_TO_OBSIDIAN_MIN_CHROME_MAJOR", "144"))
 
 
@@ -186,16 +185,6 @@ def ensure_dev_browser() -> None:
     run_checked(["npm", "install", "-g", "dev-browser"])
 
 
-def ensure_codex() -> None:
-    if shutil.which("codex"):
-        return
-    raise SystemExit(
-        "Standalone shell automation with LLM participation is enabled, but the codex CLI is not available.\n"
-        "Install Codex first, or run with X_BOOKMARKS_TO_OBSIDIAN_USE_LLM=0 to skip "
-        "LLM-generated titles, summaries, and tags."
-    )
-
-
 def check_chrome_version(chrome_bin: str) -> None:
     if not Path(chrome_bin).exists():
         raise SystemExit(f"Google Chrome was not found at: {chrome_bin}")
@@ -258,7 +247,31 @@ def write_known_links(path: Path, links: Iterable[str]) -> int:
     return len(known)
 
 
-def main() -> int:
+def usage() -> str:
+    script = Path(__file__).name
+    return (
+        f"Usage:\n"
+        f"  python3 {script}                # export + generate\n"
+        f"  python3 {script} full           # export + generate\n"
+        f"  python3 {script} export         # export only\n"
+        f"  python3 {script} generate       # generate only from existing JSON\n"
+    )
+
+
+def parse_mode(argv: List[str]) -> str:
+    if not argv:
+        return "full"
+    mode = argv[0].strip().lower()
+    if mode in {"full", "export", "generate"} and len(argv) == 1:
+        return mode
+    if mode in {"-h", "--help", "help"}:
+        print(usage())
+        raise SystemExit(0)
+    raise SystemExit(f"Unsupported command: {' '.join(argv)}\n\n{usage()}")
+
+
+def main(argv: List[str]) -> int:
+    mode = parse_mode(argv)
     load_config()
 
     ensure_target_dir_configured()
@@ -276,26 +289,27 @@ def main() -> int:
     os.environ["X_BOOKMARKS_TO_OBSIDIAN_SOURCE_JSON"] = str(source_json)
     os.environ["X_BOOKMARKS_TO_OBSIDIAN_LLM_OVERRIDES_FILE"] = str(overrides_file)
 
-    ensure_dev_browser()
-    chrome_bin = resolve_chrome_bin()
-    check_chrome_version(chrome_bin)
+    run_export = mode in {"full", "export"} and not bool_env("X_BOOKMARKS_TO_OBSIDIAN_SKIP_EXPORT", "0")
+    run_generate = mode in {"full", "generate"} and not bool_env("X_BOOKMARKS_TO_OBSIDIAN_SKIP_GENERATE", "0")
 
-    endpoint = build_endpoint(resolve_devtools_file())
-
-    known_count = write_known_links(known_links_file, load_known_links(state_file))
-    if state_file.exists():
-        print(f"Loaded {known_count} known bookmarks from {state_file}")
-    else:
-        print("No prior state file found; export will scan until the end of the bookmark list")
+    if not run_export and not run_generate:
+        raise SystemExit("Nothing to do: both export and generate are disabled.")
 
     child_env = os.environ.copy()
-    child_env["X_BOOKMARKS_TO_OBSIDIAN_CHROME_BIN"] = chrome_bin
 
-    skip_export = bool_env("X_BOOKMARKS_TO_OBSIDIAN_SKIP_EXPORT", "0")
-    skip_generate = bool_env("X_BOOKMARKS_TO_OBSIDIAN_SKIP_GENERATE", "0")
-    use_llm = bool_env("X_BOOKMARKS_TO_OBSIDIAN_USE_LLM", "1")
+    if run_export:
+        ensure_dev_browser()
+        chrome_bin = resolve_chrome_bin()
+        check_chrome_version(chrome_bin)
+        endpoint = build_endpoint(resolve_devtools_file())
 
-    if not skip_export:
+        known_count = write_known_links(known_links_file, load_known_links(state_file))
+        if state_file.exists():
+            print(f"Loaded {known_count} known bookmarks from {state_file}")
+        else:
+            print("No prior state file found; export will scan until the end of the bookmark list")
+
+        child_env["X_BOOKMARKS_TO_OBSIDIAN_CHROME_BIN"] = chrome_bin
         run_checked(
             [
                 "dev-browser",
@@ -309,22 +323,19 @@ def main() -> int:
             env=child_env,
         )
 
-    if not skip_generate and use_llm:
-        ensure_codex()
-        run_checked([sys.executable, str(LLM_SCRIPT)], env=child_env)
-
-    if not skip_generate:
+    if run_generate:
         run_checked([sys.executable, str(GENERATE_SCRIPT)], env=child_env)
 
-    if skip_generate:
+    if mode == "export" or (run_export and not run_generate):
         print(f"Exported X bookmarks to {source_json}")
-    elif use_llm:
-        print(f"Synced X bookmarks into {target_dir} with LLM-generated titles, summaries, and tags")
+        print(f"Write agent overrides to {overrides_file}")
+    elif mode == "generate" or (run_generate and not run_export):
+        print(f"Generated X bookmark notes into {target_dir}")
     else:
-        print(f"Synced X bookmarks into {target_dir} without LLM participation")
+        print(f"Synced X bookmarks into {target_dir}")
 
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

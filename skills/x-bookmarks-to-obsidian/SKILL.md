@@ -13,29 +13,37 @@ Before running the skill, create `x_bookmarks_to_obsidian.env` from `x_bookmarks
 
 - `X_BOOKMARKS_TO_OBSIDIAN_TARGET_DIR` to an absolute Obsidian path
 
-## Recommended Workflow
+## Workflow
 
-### Agent-assisted mode
+The agent should treat this skill as `export -> current session writes overrides -> generate`.
+Do not rely on the scripts to make a second LLM call on their own.
 
 1. Run export-only sync:
-   - `X_BOOKMARKS_TO_OBSIDIAN_SKIP_GENERATE=1 python3 scripts/x_bookmarks_to_obsidian.py`
+   - `python3 scripts/x_bookmarks_to_obsidian.py export`
 2. Read the exported JSON from:
    - `X_BOOKMARKS_TO_OBSIDIAN_SOURCE_JSON`
    - default: `~/.dev-browser/tmp/x-bookmarks-to-obsidian-export.json`
-3. Generate better `title`, `summary`, and `tags` in the current agent session.
+3. In the current agent session, create higher-signal `title`, `summary`, and `tags` for the exported items.
+   - Keep one output entry per bookmark key.
+   - Reuse existing overrides when the file already exists.
+   - Only create or update entries for bookmarks present in the current export JSON.
 4. Write overrides to:
    - `X_BOOKMARKS_TO_OBSIDIAN_LLM_OVERRIDES_FILE`
    - default: `~/.dev-browser/tmp/x-bookmarks-to-obsidian-llm-overrides.json`
 5. Follow the JSON shape from:
    - [`x_bookmarks_to_obsidian_llm_overrides.example.json`](x_bookmarks_to_obsidian_llm_overrides.example.json)
-6. Generate final notes:
-   - `python3 scripts/generate_x_bookmarks_obsidian_notes.py`
+6. Use the prompt template when writing overrides in the current session:
+   - [`overrides_prompt_template.md`](overrides_prompt_template.md)
+7. Generate final notes:
+   - `python3 scripts/x_bookmarks_to_obsidian.py generate`
 
-### Standalone shell mode
+## Agent Rules
 
-- `python3 scripts/x_bookmarks_to_obsidian.py`
+- When the user asks to sync bookmarks, prefer the full agent-assisted flow instead of calling `python3 scripts/x_bookmarks_to_obsidian.py` in default full mode without overrides.
+- The current agent session is responsible for writing the overrides JSON.
+- If no overrides are needed, say that explicitly and then run the final generate step.
+- Keep summaries concrete and compact; do not add filler.
 
-If LLM participation is enabled, this requires the local `codex` CLI.
 
 ## Output
 

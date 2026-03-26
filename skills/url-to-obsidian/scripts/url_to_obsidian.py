@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
@@ -15,7 +15,6 @@ CONFIG_FILE = Path(os.environ.get("URL_TO_OBSIDIAN_CONFIG_FILE", str(SKILL_DIR /
 EXTRACT_SCRIPT = SKILL_DIR / "scripts" / "extract_input_urls.py"
 EXPORT_SCRIPT = SKILL_DIR / "scripts" / "export_urls.devbrowser.js"
 GENERATE_SCRIPT = SKILL_DIR / "scripts" / "generate_url_obsidian_notes.py"
-LLM_SCRIPT = SKILL_DIR / "scripts" / "generate_url_llm_overrides.py"
 MIN_SUPPORTED_CHROME_MAJOR = int(os.environ.get("URL_TO_OBSIDIAN_MIN_CHROME_MAJOR", "144"))
 
 
@@ -187,16 +186,6 @@ def ensure_dev_browser() -> None:
     run_checked(["npm", "install", "-g", "dev-browser"])
 
 
-def ensure_codex() -> None:
-    if shutil.which("codex"):
-        return
-    raise SystemExit(
-        "Standalone shell automation with LLM participation is enabled, but the codex CLI is not available.\n"
-        "Install Codex first, or run with URL_TO_OBSIDIAN_USE_LLM=0 to skip "
-        "LLM-generated titles, summaries, and tags."
-    )
-
-
 def check_chrome_version(chrome_bin: str) -> None:
     if not Path(chrome_bin).exists():
         raise SystemExit(f"Google Chrome was not found at: {chrome_bin}")
@@ -231,12 +220,35 @@ def build_endpoint(devtools_file: Path) -> str:
     return f"ws://127.0.0.1:{port}{ws_path}"
 
 
+def usage() -> str:
+    script = Path(__file__).name
+    return (
+        f"Usage:\n"
+        f"  python3 {script} <url-or-text>        # export + generate\n"
+        f"  python3 {script} full <url-or-text>   # export + generate\n"
+        f"  python3 {script} export <url-or-text> # export only\n"
+        f"  python3 {script} generate             # generate only from existing JSON\n"
+    )
+
+
+def parse_mode_and_args(argv: List[str]) -> Tuple[str, List[str]]:
+    if not argv:
+        return "full", []
+    mode = argv[0].strip().lower()
+    if mode in {"full", "export", "generate"}:
+        return mode, argv[1:]
+    if mode in {"-h", "--help", "help"}:
+        print(usage())
+        raise SystemExit(0)
+    return "full", argv
+
+
 def collect_input(argv: List[str]) -> str:
     if argv:
         return " ".join(argv)
     if not sys.stdin.isatty():
         return sys.stdin.read()
-    raise SystemExit("Pass a URL or paste text that contains one or more URLs.")
+    raise SystemExit("Pass a URL or paste text that contains one or more URLs.\n\n" + usage())
 
 
 def extract_urls(raw_input: str, urls_json: Path) -> int:
@@ -257,9 +269,9 @@ def extract_urls(raw_input: str, urls_json: Path) -> int:
 
 
 def main(argv: List[str]) -> int:
+    mode, mode_args = parse_mode_and_args(argv)
     load_config()
 
-    raw_input = collect_input(argv)
     ensure_target_dir_configured()
     target_dir = env_path("URL_TO_OBSIDIAN_TARGET_DIR", default_target_dir())
     ensure_absolute_target_dir(target_dir)
@@ -275,23 +287,26 @@ def main(argv: List[str]) -> int:
     os.environ["URL_TO_OBSIDIAN_SOURCE_JSON"] = str(source_json)
     os.environ["URL_TO_OBSIDIAN_LLM_OVERRIDES_FILE"] = str(overrides_file)
 
-    url_count = extract_urls(raw_input, urls_json)
-    if url_count == 0:
-        raise SystemExit("No supported URLs were found in the provided text.")
-
-    ensure_dev_browser()
-    chrome_bin = resolve_chrome_bin()
-    check_chrome_version(chrome_bin)
-    endpoint = build_endpoint(resolve_devtools_file())
+    run_export = mode in {"full", "export"} and not bool_env("URL_TO_OBSIDIAN_SKIP_EXPORT", "0")
+    run_generate = mode in {"full", "generate"} and not bool_env("URL_TO_OBSIDIAN_SKIP_GENERATE", "0")
+    if not run_export and not run_generate:
+        raise SystemExit("Nothing to do: both export and generate are disabled.")
 
     child_env = os.environ.copy()
-    child_env["URL_TO_OBSIDIAN_CHROME_BIN"] = chrome_bin
+    url_count = 0
 
-    skip_export = bool_env("URL_TO_OBSIDIAN_SKIP_EXPORT", "0")
-    skip_generate = bool_env("URL_TO_OBSIDIAN_SKIP_GENERATE", "0")
-    use_llm = bool_env("URL_TO_OBSIDIAN_USE_LLM", "1")
+    if run_export:
+        raw_input = collect_input(mode_args)
+        url_count = extract_urls(raw_input, urls_json)
+        if url_count == 0:
+            raise SystemExit("No supported URLs were found in the provided text.")
 
-    if not skip_export:
+        ensure_dev_browser()
+        chrome_bin = resolve_chrome_bin()
+        check_chrome_version(chrome_bin)
+        endpoint = build_endpoint(resolve_devtools_file())
+        child_env["URL_TO_OBSIDIAN_CHROME_BIN"] = chrome_bin
+
         run_checked(
             [
                 "dev-browser",
@@ -305,19 +320,16 @@ def main(argv: List[str]) -> int:
             env=child_env,
         )
 
-    if not skip_generate and use_llm:
-        ensure_codex()
-        run_checked([sys.executable, str(LLM_SCRIPT)], env=child_env)
-
-    if not skip_generate:
+    if run_generate:
         run_checked([sys.executable, str(GENERATE_SCRIPT)], env=child_env)
 
-    if skip_generate:
+    if mode == "export" or (run_export and not run_generate):
         print(f"Exported {url_count} pages to {source_json}")
-    elif use_llm:
-        print(f"Organized {url_count} link(s) into {target_dir} with LLM-generated titles, summaries, and tags")
+        print(f"Write agent overrides to {overrides_file}")
+    elif mode == "generate" or (run_generate and not run_export):
+        print(f"Generated URL notes into {target_dir}")
     else:
-        print(f"Organized {url_count} link(s) into {target_dir} without LLM participation")
+        print(f"Organized {url_count} link(s) into {target_dir}")
 
     return 0
 
